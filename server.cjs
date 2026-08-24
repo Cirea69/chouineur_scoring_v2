@@ -148,6 +148,34 @@ app.post("/api/rooms/:code/join", (req, res) => {
   }
   res.json({ success: true, state: room.state });
 });
+app.get("/api/user-sync/:userId", (req, res) => {
+  const { userId } = req.params;
+  const db = loadDb();
+  const userSyncs = db.userSyncs || {};
+  res.json(userSyncs[userId] || null);
+});
+app.post("/api/user-sync/:userId", (req, res) => {
+  const { userId } = req.params;
+  const { profiles, history, players, updatedAt } = req.body;
+  const db = loadDb();
+  if (!db.userSyncs) {
+    db.userSyncs = {};
+  }
+  db.userSyncs[userId] = {
+    userId,
+    profiles: profiles || [],
+    history: history || [],
+    players: players || [],
+    updatedAt: updatedAt || Date.now()
+  };
+  try {
+    const data = JSON.stringify({ rooms: db.rooms || rooms, historyRecs: db.historyRecs || historyRecs, userSyncs: db.userSyncs }, null, 2);
+    import_fs.default.writeFileSync(DB_FILE, data, "utf-8");
+  } catch (e) {
+    console.error("[SERVER] Erreur lors de la sauvegarde user-sync:", e);
+  }
+  res.json({ success: true, data: db.userSyncs[userId] });
+});
 app.get("/api/history", (req, res) => {
   res.json(historyRecs);
 });
