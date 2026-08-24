@@ -73,7 +73,9 @@ export default function AccountModal({
     try {
       const res = await onSyncTriggered();
       if (res && res.success) {
-        setSuccessMsg(res.message || "Synchronisation réussie !");
+        const sourceInfo = res.syncSource ? ` (Via ${res.syncSource})` : "";
+        const detailInfo = res.details ? ` - Note: ${res.details}` : "";
+        setSuccessMsg((res.message || "Synchronisation réussie !") + sourceInfo + detailInfo);
       } else {
         setSuccessMsg("Synchronisation terminée ! Vos données sont à jour.");
       }

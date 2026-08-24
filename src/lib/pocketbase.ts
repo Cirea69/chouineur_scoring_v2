@@ -98,61 +98,65 @@ export const pb = {
     countHistory: number;
     syncSource: string;
     message: string;
+    details?: string;
   }> => {
     const user = client.authStore.record;
-    const userId = user ? (user.id || user.email) : (localStorage.getItem("chouine_client_id") || "guest");
     const localProfiles = Array.isArray(localData.profiles) ? localData.profiles : [];
     const localHistory = Array.isArray(localData.history) ? localData.history : [];
     const localPlayers = Array.isArray(localData.players) ? localData.players : [];
 
     let cloudProfiles: any[] = [];
     let cloudHistory: any[] = [];
+    let pbSuccess = false;
+    let pbDetails = "";
     let syncSource = "Local";
 
     // 1. Try PocketBase dedicated user_data_chouineur collection
     let pbRecordId: string | null = null;
-    let pbCollectionName = "user_data_chouineur";
+    let pbTargetCollection = "user_data_chouineur";
 
     if (client.authStore.isValid && user?.id) {
-      try {
-        let record: any = null;
+      // Test collections in order of preference
+      const candidateCollections = ['user_data_chouineur', 'user_profiles_chouineur', 'users_data', 'players_scoring'];
+      
+      for (const col of candidateCollections) {
         try {
-          record = await client.collection('user_data_chouineur').getFirstListItem(`user_id="${user.id}"`, { requestKey: null });
-          pbCollectionName = "user_data_chouineur";
-        } catch (e) {
-          // Fallback to legacy user_profiles_chouineur
-          try {
-            record = await client.collection('user_profiles_chouineur').getFirstListItem(`user_id="${user.id}"`, { requestKey: null });
-            pbCollectionName = "user_profiles_chouineur";
-          } catch (e2) {
-            // No existing record yet
+          const record = await client.collection(col).getFirstListItem(`user_id="${user.id}"`, { requestKey: null });
+          if (record) {
+            pbRecordId = record.id;
+            pbTargetCollection = col;
+            if (Array.isArray(record.profiles) && record.profiles.length > 0) {
+              cloudProfiles = record.profiles;
+            }
+            if (Array.isArray(record.history) && record.history.length > 0) {
+              cloudHistory = record.history;
+            }
+            pbSuccess = true;
+            syncSource = `PocketBase (${col})`;
+            break;
+          }
+        } catch (e: any) {
+          // If not found (404), maybe the collection exists and we can create later
+          if (e?.status === 404) {
+            pbTargetCollection = col;
           }
         }
-
-        if (record) {
-          pbRecordId = record.id;
-          if (Array.isArray(record.profiles)) cloudProfiles = record.profiles;
-          if (Array.isArray(record.history)) cloudHistory = record.history;
-          syncSource = "PocketBase Cloud";
-        }
-      } catch (err) {
-        console.warn("PocketBase cloud fetch warning:", err);
       }
     }
 
     // 2. Also check /api/user-sync on Express backend (persisted in db.json for bulletproof cross-device sync)
+    const syncUserId = user ? (user.id || user.email) : (localStorage.getItem("chouine_client_id") || "guest");
     try {
-      const serverRes = await fetch(`/api/user-sync/${encodeURIComponent(userId)}`)
+      const serverRes = await fetch(`/api/user-sync/${encodeURIComponent(syncUserId)}`)
         .then((r) => (r.ok ? r.json() : null))
         .catch(() => null);
 
       if (serverRes && typeof serverRes === "object") {
         if (Array.isArray(serverRes.profiles) && serverRes.profiles.length > 0) {
-          // Add any profiles not in cloudProfiles
           const pMap = new Map();
-          cloudProfiles.forEach(p => pMap.set(p.name?.toLowerCase() || p.id, p));
+          cloudProfiles.forEach(p => pMap.set((p.name || "").trim().toLowerCase() || p.id, p));
           serverRes.profiles.forEach((p: any) => {
-            const key = p.name?.toLowerCase() || p.id;
+            const key = (p.name || "").trim().toLowerCase() || p.id;
             if (!pMap.has(key)) pMap.set(key, p);
           });
           cloudProfiles = Array.from(pMap.values());
@@ -206,7 +210,7 @@ export const pb = {
 
     // 5. Push merged state back to PocketBase and Server
     const payload = {
-      user_id: user?.id || userId,
+      user_id: user?.id || syncUserId,
       profiles: mergedProfiles,
       history: mergedHistory,
       players: localPlayers,
@@ -217,26 +221,36 @@ export const pb = {
     if (client.authStore.isValid && user?.id) {
       try {
         if (pbRecordId) {
-          await client.collection(pbCollectionName).update(pbRecordId, payload);
+          await client.collection(pbTargetCollection).update(pbRecordId, payload);
+          pbSuccess = true;
         } else {
           try {
-            await client.collection('user_data_chouineur').create(payload);
-          } catch (e) {
-            await client.collection('user_profiles_chouineur').create({
-              user_id: user.id,
-              profiles: mergedProfiles,
-              history: mergedHistory
-            });
+            await client.collection(pbTargetCollection).create(payload);
+            pbSuccess = true;
+          } catch (e: any) {
+            // Try fallback collection user_profiles_chouineur
+            try {
+              await client.collection('user_profiles_chouineur').create({
+                user_id: user.id,
+                profiles: mergedProfiles,
+                history: mergedHistory
+              });
+              pbSuccess = true;
+            } catch (e2: any) {
+              pbDetails = `PocketBase: ${e2?.message || e?.message || "Erreur de collection"}`;
+              console.warn("PocketBase push warning:", pbDetails);
+            }
           }
         }
       } catch (err: any) {
-        console.warn("PocketBase push warning:", err?.message || err);
+        pbDetails = `PocketBase: ${err?.message || err}`;
+        console.warn("PocketBase push error:", pbDetails);
       }
     }
 
     // 5b. Always save to Express API backend for persistent multi-device sync
     try {
-      await fetch(`/api/user-sync/${encodeURIComponent(userId)}`, {
+      await fetch(`/api/user-sync/${encodeURIComponent(syncUserId)}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload)
@@ -257,7 +271,8 @@ export const pb = {
       countProfiles: mergedProfiles.length,
       countHistory: mergedHistory.length,
       syncSource,
-      message: `${mergedProfiles.length} profil(s) et ${mergedHistory.length} partie(s) synchronisés avec succès.`
+      message: `${mergedProfiles.length} Chouineur(s) et ${mergedHistory.length} partie(s) synchronisés avec succès.`,
+      details: pbDetails
     };
   },
 
