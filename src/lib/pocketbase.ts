@@ -135,56 +135,46 @@ export const pb = {
     let syncSource = "Local";
     let pocketbaseStatus: "connected_saved" | "connected_read" | "auth_error" | "api_rule_error" | "collection_missing" | "server_only" = "server_only";
 
-    // 1. Try PocketBase dedicated user_data_chouineur collection
+    // 1. Target exclusively the 'user_data_chouineur' collection
     let pbRecordId: string | null = null;
-    let pbTargetCollection = "user_data_chouineur";
+    const PB_COLLECTION = "user_data_chouineur";
 
     if (client.authStore.isValid && user?.id) {
-      // Test collections in order of preference
-      const candidateCollections = ['user_data_chouineur', 'user_profiles_chouineur', 'users_data'];
-      
-      for (const col of candidateCollections) {
+      try {
+        let record: any = null;
         try {
-          // Attempt search by user_id or user
-          let record: any = null;
-          try {
-            record = await client.collection(col).getFirstListItem(`user_id="${user.id}"`, { requestKey: null });
-          } catch (eSearch: any) {
-            if (eSearch?.status !== 404) {
-              // Try searching by id or listing
-              try {
-                const list = await client.collection(col).getList(1, 10, { requestKey: null });
-                record = list.items.find((item: any) => item.user_id === user.id || item.user === user.id || item.id === user.id);
-              } catch (eList) {}
-            }
+          record = await client.collection(PB_COLLECTION).getFirstListItem(`user_id="${user.id}"`, { requestKey: null });
+        } catch (eSearch: any) {
+          if (eSearch?.status !== 404) {
+            // Try searching from list in case user_id filter format differs
+            try {
+              const list = await client.collection(PB_COLLECTION).getList(1, 20, { requestKey: null });
+              record = list.items.find((item: any) => item.user_id === user.id || item.user === user.id || item.id === user.id);
+            } catch (eList) {}
           }
+        }
 
-          if (record) {
-            pbRecordId = record.id;
-            pbTargetCollection = col;
-            if (Array.isArray(record.profiles) && record.profiles.length > 0) {
-              cloudProfiles = record.profiles;
-            }
-            if (Array.isArray(record.history) && record.history.length > 0) {
-              cloudHistory = record.history;
-            }
-            pbSuccess = true;
-            pocketbaseStatus = "connected_read";
-            syncSource = `PocketBase (${col})`;
-            break;
-          } else {
-            // Collection exists, we can write to it
-            pbTargetCollection = col;
+        if (record) {
+          pbRecordId = record.id;
+          if (Array.isArray(record.profiles) && record.profiles.length > 0) {
+            cloudProfiles = record.profiles;
           }
-        } catch (e: any) {
-          if (e?.status === 403) {
-            pbDetails = `API Rules PocketBase restreintes sur ${col} (Erreur 403)`;
-            pocketbaseStatus = "api_rule_error";
-          } else if (e?.status === 404) {
-            pbTargetCollection = col;
-          } else {
-            pbDetails = `PocketBase: ${e?.message || e}`;
+          if (Array.isArray(record.history) && record.history.length > 0) {
+            cloudHistory = record.history;
           }
+          pbSuccess = true;
+          pocketbaseStatus = "connected_read";
+          syncSource = `PocketBase (${PB_COLLECTION})`;
+        }
+      } catch (e: any) {
+        if (e?.status === 403) {
+          pbDetails = `API Rules PocketBase restreintes sur ${PB_COLLECTION} (Erreur 403)`;
+          pocketbaseStatus = "api_rule_error";
+        } else if (e?.status === 404) {
+          pocketbaseStatus = "collection_missing";
+          pbDetails = `Collection "${PB_COLLECTION}" non trouvée (404)`;
+        } else {
+          pbDetails = `PocketBase: ${e?.message || e}`;
         }
       }
     } else {
@@ -268,17 +258,17 @@ export const pb = {
 
       try {
         if (pbRecordId) {
-          await client.collection(pbTargetCollection).update(pbRecordId, cleanPayload);
+          await client.collection(PB_COLLECTION).update(pbRecordId, cleanPayload);
           pbSuccess = true;
           pocketbaseStatus = "connected_saved";
-          pbDetails = `Sauvegardé avec succès dans PocketBase (${pbTargetCollection})`;
+          pbDetails = `Sauvegardé avec succès dans PocketBase (${PB_COLLECTION})`;
         } else {
           try {
-            const created = await client.collection(pbTargetCollection).create(cleanPayload);
+            const created = await client.collection(PB_COLLECTION).create(cleanPayload);
             pbRecordId = created.id;
             pbSuccess = true;
             pocketbaseStatus = "connected_saved";
-            pbDetails = `Créé et sauvegardé dans PocketBase (${pbTargetCollection})`;
+            pbDetails = `Créé et sauvegardé dans PocketBase (${PB_COLLECTION})`;
           } catch (eCreate: any) {
             // Try simplified payload without 'players' in case 'players' field was omitted in PB schema
             try {
@@ -287,19 +277,19 @@ export const pb = {
                 profiles: mergedProfiles,
                 history: mergedHistory
               };
-              const created2 = await client.collection(pbTargetCollection).create(miniPayload);
+              const created2 = await client.collection(PB_COLLECTION).create(miniPayload);
               pbRecordId = created2.id;
               pbSuccess = true;
               pocketbaseStatus = "connected_saved";
-              pbDetails = `Enregistré dans PocketBase (${pbTargetCollection})`;
+              pbDetails = `Enregistré dans PocketBase (${PB_COLLECTION})`;
             } catch (eMini: any) {
               pbDetails = `Erreur PocketBase: ${eMini?.message || eCreate?.message || "Échec de création"}`;
               if (eMini?.status === 403 || eCreate?.status === 403) {
                 pocketbaseStatus = "api_rule_error";
-                pbDetails = `PocketBase: Accès refusé (403). Vérifiez les API Rules de "${pbTargetCollection}"`;
+                pbDetails = `PocketBase: Accès refusé (403). Vérifiez les API Rules de "${PB_COLLECTION}"`;
               } else if (eMini?.status === 404 || eCreate?.status === 404) {
                 pocketbaseStatus = "collection_missing";
-                pbDetails = `PocketBase: Collection "${pbTargetCollection}" introuvable (404)`;
+                pbDetails = `PocketBase: Collection "${PB_COLLECTION}" introuvable (404)`;
               }
               console.warn("PocketBase push error:", pbDetails, eMini);
             }
@@ -340,7 +330,7 @@ export const pb = {
       mergedHistory,
       countProfiles: mergedProfiles.length,
       countHistory: mergedHistory.length,
-      syncSource: pbSuccess ? `PocketBase (${pbTargetCollection})` : syncSource,
+      syncSource: pbSuccess ? `PocketBase (${PB_COLLECTION})` : syncSource,
       message: `${mergedProfiles.length} Chouineur(s) et ${mergedHistory.length} partie(s) synchronisés avec succès.`,
       details: pbDetails,
       pocketbaseStatus
@@ -368,7 +358,7 @@ export const pb = {
 
     let isOnline = false;
     let hasCollection = false;
-    let collectionName = "user_data_chouineur";
+    const collectionName = "user_data_chouineur";
     let canRead = false;
     let canWrite = false;
     let errorDetail = "";
@@ -384,32 +374,30 @@ export const pb = {
 
     if (isLoggedIn && user?.id) {
       try {
-        // Try reading user_data_chouineur
-        const candidateCollections = ['user_data_chouineur', 'user_profiles_chouineur'];
-        for (const col of candidateCollections) {
-          try {
-            await client.collection(col).getList(1, 1, { requestKey: null });
+        // Specifically test the user_data_chouineur collection
+        try {
+          await client.collection(collectionName).getList(1, 1, { requestKey: null });
+          hasCollection = true;
+          canRead = true;
+          canWrite = true;
+        } catch (e: any) {
+          if (e?.status === 403) {
             hasCollection = true;
-            canRead = true;
-            collectionName = col;
-            break;
-          } catch (e: any) {
-            if (e?.status === 403) {
-              hasCollection = true;
-              canRead = false;
-              errorDetail = `Collection "${col}" existe mais les règles API sont bloquées (403 Forbidden).`;
-              break;
-            } else if (e?.status !== 404) {
-              hasCollection = true;
-              errorDetail = `Accès collection ${col}: ${e?.message || e}`;
-            }
+            canRead = false;
+            errorDetail = `La collection "${collectionName}" existe mais les règles API (API Rules) sont bloquées (403 Forbidden). Déverrouillez les règles dans PocketBase Admin.`;
+          } else if (e?.status === 404) {
+            hasCollection = false;
+            errorDetail = `La collection "${collectionName}" n'a pas été trouvée (Erreur 404).`;
+          } else {
+            hasCollection = true;
+            errorDetail = `Accès collection ${collectionName}: ${e?.message || e}`;
           }
         }
       } catch (err: any) {
         errorDetail = err?.message || String(err);
       }
     } else {
-      errorDetail = "Non connecté. Veuillez vous connecter avec votre e-mail et mot de passe.";
+      errorDetail = "Non connecté. Veuillez vous connecter avec votre e-mail et mot de passe ci-dessus.";
     }
 
     return {
