@@ -1,0 +1,22 @@
+{
+  "name": "Chouineurs - Saisie des Scores",
+  "short_name": "Chouineurs",
+  "description": "Application de saisie de scores pour le jeu de la Chouine en temps réel.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#6366f1",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "/icon.jpg",
+      "sizes": "192x192",
+      "type": "image/jpeg"
+    },
+    {
+      "src": "/icon.jpg",
+      "sizes": "512x512",
+      "type": "image/jpeg"
+    }
+  ]
+}
