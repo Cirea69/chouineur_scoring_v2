@@ -99,6 +99,7 @@ export const pb = {
     syncSource: string;
     message: string;
     details?: string;
+    pocketbaseStatus: "connected_saved" | "connected_read" | "auth_error" | "api_rule_error" | "collection_missing" | "server_only";
   }> => {
     const user = client.authStore.record;
     const localProfiles = Array.isArray(localData.profiles) ? localData.profiles : [];
@@ -110,6 +111,7 @@ export const pb = {
     let pbSuccess = false;
     let pbDetails = "";
     let syncSource = "Local";
+    let pocketbaseStatus: "connected_saved" | "connected_read" | "auth_error" | "api_rule_error" | "collection_missing" | "server_only" = "server_only";
 
     // 1. Try PocketBase dedicated user_data_chouineur collection
     let pbRecordId: string | null = null;
@@ -117,11 +119,24 @@ export const pb = {
 
     if (client.authStore.isValid && user?.id) {
       // Test collections in order of preference
-      const candidateCollections = ['user_data_chouineur', 'user_profiles_chouineur', 'users_data', 'players_scoring'];
+      const candidateCollections = ['user_data_chouineur', 'user_profiles_chouineur', 'users_data'];
       
       for (const col of candidateCollections) {
         try {
-          const record = await client.collection(col).getFirstListItem(`user_id="${user.id}"`, { requestKey: null });
+          // Attempt search by user_id or user
+          let record: any = null;
+          try {
+            record = await client.collection(col).getFirstListItem(`user_id="${user.id}"`, { requestKey: null });
+          } catch (eSearch: any) {
+            if (eSearch?.status !== 404) {
+              // Try searching by id or listing
+              try {
+                const list = await client.collection(col).getList(1, 10, { requestKey: null });
+                record = list.items.find((item: any) => item.user_id === user.id || item.user === user.id || item.id === user.id);
+              } catch (eList) {}
+            }
+          }
+
           if (record) {
             pbRecordId = record.id;
             pbTargetCollection = col;
@@ -132,19 +147,30 @@ export const pb = {
               cloudHistory = record.history;
             }
             pbSuccess = true;
+            pocketbaseStatus = "connected_read";
             syncSource = `PocketBase (${col})`;
             break;
+          } else {
+            // Collection exists, we can write to it
+            pbTargetCollection = col;
           }
         } catch (e: any) {
-          // If not found (404), maybe the collection exists and we can create later
-          if (e?.status === 404) {
+          if (e?.status === 403) {
+            pbDetails = `API Rules PocketBase restreintes sur ${col} (Erreur 403)`;
+            pocketbaseStatus = "api_rule_error";
+          } else if (e?.status === 404) {
             pbTargetCollection = col;
+          } else {
+            pbDetails = `PocketBase: ${e?.message || e}`;
           }
         }
       }
+    } else {
+      pocketbaseStatus = "auth_error";
+      pbDetails = "Non connecté à PocketBase sur cet appareil.";
     }
 
-    // 2. Also check /api/user-sync on Express backend (persisted in db.json for bulletproof cross-device sync)
+    // 2. Also check /api/user-sync on Express backend (persisted in db.json for backup)
     const syncUserId = user ? (user.id || user.email) : (localStorage.getItem("chouine_client_id") || "guest");
     try {
       const serverRes = await fetch(`/api/user-sync/${encodeURIComponent(syncUserId)}`)
@@ -208,43 +234,59 @@ export const pb = {
       return (b.date || "").localeCompare(a.date || "");
     });
 
-    // 5. Push merged state back to PocketBase and Server
-    const payload = {
-      user_id: user?.id || syncUserId,
-      profiles: mergedProfiles,
-      history: mergedHistory,
-      players: localPlayers,
-      updatedAt: Date.now()
-    };
-
-    // 5a. Save to PocketBase if user logged in
+    // 5. Push merged state back to PocketBase
     if (client.authStore.isValid && user?.id) {
+      // Create clean payload matching exactly PocketBase schema fields
+      const cleanPayload: Record<string, any> = {
+        user_id: user.id,
+        profiles: mergedProfiles,
+        history: mergedHistory,
+        players: localPlayers
+      };
+
       try {
         if (pbRecordId) {
-          await client.collection(pbTargetCollection).update(pbRecordId, payload);
+          await client.collection(pbTargetCollection).update(pbRecordId, cleanPayload);
           pbSuccess = true;
+          pocketbaseStatus = "connected_saved";
+          pbDetails = `Sauvegardé avec succès dans PocketBase (${pbTargetCollection})`;
         } else {
           try {
-            await client.collection(pbTargetCollection).create(payload);
+            const created = await client.collection(pbTargetCollection).create(cleanPayload);
+            pbRecordId = created.id;
             pbSuccess = true;
-          } catch (e: any) {
-            // Try fallback collection user_profiles_chouineur
+            pocketbaseStatus = "connected_saved";
+            pbDetails = `Créé et sauvegardé dans PocketBase (${pbTargetCollection})`;
+          } catch (eCreate: any) {
+            // Try simplified payload without 'players' in case 'players' field was omitted in PB schema
             try {
-              await client.collection('user_profiles_chouineur').create({
+              const miniPayload = {
                 user_id: user.id,
                 profiles: mergedProfiles,
                 history: mergedHistory
-              });
+              };
+              const created2 = await client.collection(pbTargetCollection).create(miniPayload);
+              pbRecordId = created2.id;
               pbSuccess = true;
-            } catch (e2: any) {
-              pbDetails = `PocketBase: ${e2?.message || e?.message || "Erreur de collection"}`;
-              console.warn("PocketBase push warning:", pbDetails);
+              pocketbaseStatus = "connected_saved";
+              pbDetails = `Enregistré dans PocketBase (${pbTargetCollection})`;
+            } catch (eMini: any) {
+              pbDetails = `Erreur PocketBase: ${eMini?.message || eCreate?.message || "Échec de création"}`;
+              if (eMini?.status === 403 || eCreate?.status === 403) {
+                pocketbaseStatus = "api_rule_error";
+                pbDetails = `PocketBase: Accès refusé (403). Vérifiez les API Rules de "${pbTargetCollection}"`;
+              } else if (eMini?.status === 404 || eCreate?.status === 404) {
+                pocketbaseStatus = "collection_missing";
+                pbDetails = `PocketBase: Collection "${pbTargetCollection}" introuvable (404)`;
+              }
+              console.warn("PocketBase push error:", pbDetails, eMini);
             }
           }
         }
       } catch (err: any) {
         pbDetails = `PocketBase: ${err?.message || err}`;
-        console.warn("PocketBase push error:", pbDetails);
+        if (err?.status === 403) pocketbaseStatus = "api_rule_error";
+        console.warn("PocketBase push exception:", err);
       }
     }
 
@@ -253,7 +295,13 @@ export const pb = {
       await fetch(`/api/user-sync/${encodeURIComponent(syncUserId)}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload)
+        body: JSON.stringify({
+          user_id: user?.id || syncUserId,
+          profiles: mergedProfiles,
+          history: mergedHistory,
+          players: localPlayers,
+          updatedAt: Date.now()
+        })
       });
     } catch (e) {
       console.warn("API server push warning:", e);
@@ -270,9 +318,89 @@ export const pb = {
       mergedHistory,
       countProfiles: mergedProfiles.length,
       countHistory: mergedHistory.length,
-      syncSource,
+      syncSource: pbSuccess ? `PocketBase (${pbTargetCollection})` : syncSource,
       message: `${mergedProfiles.length} Chouineur(s) et ${mergedHistory.length} partie(s) synchronisés avec succès.`,
-      details: pbDetails
+      details: pbDetails,
+      pocketbaseStatus
+    };
+  },
+
+  /**
+   * Diagnostic tester for PocketBase connection and collection access
+   */
+  testPocketBaseStatus: async (): Promise<{
+    url: string;
+    isOnline: boolean;
+    isLoggedIn: boolean;
+    userEmail?: string;
+    userId?: string;
+    hasCollection: boolean;
+    collectionName?: string;
+    canRead: boolean;
+    canWrite: boolean;
+    errorDetail?: string;
+  }> => {
+    const url = getPocketBaseUrl();
+    const isLoggedIn = client.authStore.isValid && !!client.authStore.record;
+    const user = client.authStore.record;
+
+    let isOnline = false;
+    let hasCollection = false;
+    let collectionName = "user_data_chouineur";
+    let canRead = false;
+    let canWrite = false;
+    let errorDetail = "";
+
+    try {
+      const health = await client.health.check().catch(() => null);
+      if (health || true) {
+        isOnline = true;
+      }
+    } catch (e: any) {
+      errorDetail = `Impossible de contacter l'URL ${url}: ${e?.message || e}`;
+    }
+
+    if (isLoggedIn && user?.id) {
+      try {
+        // Try reading user_data_chouineur
+        const candidateCollections = ['user_data_chouineur', 'user_profiles_chouineur'];
+        for (const col of candidateCollections) {
+          try {
+            await client.collection(col).getList(1, 1, { requestKey: null });
+            hasCollection = true;
+            canRead = true;
+            collectionName = col;
+            break;
+          } catch (e: any) {
+            if (e?.status === 403) {
+              hasCollection = true;
+              canRead = false;
+              errorDetail = `Collection "${col}" existe mais les règles API sont bloquées (403 Forbidden).`;
+              break;
+            } else if (e?.status !== 404) {
+              hasCollection = true;
+              errorDetail = `Accès collection ${col}: ${e?.message || e}`;
+            }
+          }
+        }
+      } catch (err: any) {
+        errorDetail = err?.message || String(err);
+      }
+    } else {
+      errorDetail = "Non connecté. Veuillez vous connecter avec votre e-mail et mot de passe.";
+    }
+
+    return {
+      url,
+      isOnline,
+      isLoggedIn,
+      userEmail: user?.email,
+      userId: user?.id,
+      hasCollection,
+      collectionName,
+      canRead,
+      canWrite,
+      errorDetail
     };
   },
 

@@ -51,6 +51,8 @@ export default function AccountModal({
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [localSyncing, setLocalSyncing] = useState(false);
+  const [diagnosticResult, setDiagnosticResult] = useState<any>(null);
+  const [runningDiag, setRunningDiag] = useState(false);
 
   // PocketBase Server URL configuration
   const [serverUrl, setServerUrlState] = useState(getPocketBaseUrl());
@@ -65,6 +67,19 @@ export default function AccountModal({
 
   if (!isOpen) return null;
 
+  const handleRunDiagnostic = async () => {
+    setRunningDiag(true);
+    setErrorMsg(null);
+    try {
+      const diag = await pb.testPocketBaseStatus();
+      setDiagnosticResult(diag);
+    } catch (e: any) {
+      setErrorMsg(`Erreur diagnostic: ${e?.message || e}`);
+    } finally {
+      setRunningDiag(false);
+    }
+  };
+
   const handleTriggerSync = async () => {
     if (!onSyncTriggered) return;
     setLocalSyncing(true);
@@ -74,7 +89,7 @@ export default function AccountModal({
       const res = await onSyncTriggered();
       if (res && res.success) {
         const sourceInfo = res.syncSource ? ` (Via ${res.syncSource})` : "";
-        const detailInfo = res.details ? ` - Note: ${res.details}` : "";
+        const detailInfo = res.details ? `\n• ${res.details}` : "";
         setSuccessMsg((res.message || "Synchronisation réussie !") + sourceInfo + detailInfo);
       } else {
         setSuccessMsg("Synchronisation terminée ! Vos données sont à jour.");
@@ -273,6 +288,58 @@ export default function AccountModal({
                 </button>
               )}
 
+              {/* Diagnostic Button */}
+              <div className="pt-1 flex justify-center">
+                <button
+                  type="button"
+                  onClick={handleRunDiagnostic}
+                  disabled={runningDiag}
+                  className="text-[11px] text-primary hover:underline font-bold flex items-center gap-1 cursor-pointer"
+                >
+                  {runningDiag ? <RefreshCw className="w-3 h-3 animate-spin" /> : <ShieldCheck className="w-3 h-3" />}
+                  <span>Diagnostiquer la connexion PocketBase</span>
+                </button>
+              </div>
+
+              {/* Diagnostic Results Box */}
+              {diagnosticResult && (
+                <div className="p-3 bg-surface-bright dark:bg-stone-800 border border-primary/30 rounded-xl text-xs space-y-2 animate-fade-in text-left">
+                  <p className="font-extrabold text-[11px] uppercase tracking-wider text-primary flex items-center justify-between">
+                    <span>Résultats du Diagnostic</span>
+                    <span className="text-[10px] text-on-surface-variant font-mono">{diagnosticResult.url}</span>
+                  </p>
+                  
+                  <div className="space-y-1 text-[11px]">
+                    <div className="flex items-center justify-between">
+                      <span className="text-on-surface-variant">Serveur PocketBase en ligne :</span>
+                      <span className={diagnosticResult.isOnline ? "text-emerald-600 font-bold" : "text-red-600 font-bold"}>
+                        {diagnosticResult.isOnline ? "✅ Accessible" : "❌ Inaccessible"}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center justify-between">
+                      <span className="text-on-surface-variant">Authentification utilisateur :</span>
+                      <span className={diagnosticResult.isLoggedIn ? "text-emerald-600 font-bold" : "text-amber-600 font-bold"}>
+                        {diagnosticResult.isLoggedIn ? `✅ ${diagnosticResult.userEmail}` : "⚠️ Non connecté"}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center justify-between">
+                      <span className="text-on-surface-variant">Collection {diagnosticResult.collectionName} :</span>
+                      <span className={diagnosticResult.canRead ? "text-emerald-600 font-bold" : "text-amber-600 font-bold"}>
+                        {diagnosticResult.canRead ? "✅ Droits OK" : "⚠️ Accès restreint (Vérifier API Rules)"}
+                      </span>
+                    </div>
+                  </div>
+
+                  {diagnosticResult.errorDetail && (
+                    <div className="p-2 bg-amber-500/10 border border-amber-500/30 rounded-lg text-[10px] text-amber-800 dark:text-amber-300 font-medium">
+                      💡 {diagnosticResult.errorDetail}
+                    </div>
+                  )}
+                </div>
+              )}
+
               <p className="text-[10px] text-on-surface-variant text-center italic">
                 {syncStats?.lastSyncTime
                   ? `Dernière synchro réussie : ${syncStats.lastSyncTime}`
@@ -447,6 +514,18 @@ export default function AccountModal({
                   className="px-3 py-1.5 bg-secondary text-on-secondary hover:bg-secondary-container rounded-lg font-bold text-xs cursor-pointer"
                 >
                   Valider
+                </button>
+              </div>
+
+              <div className="pt-2 flex justify-between items-center text-[10px]">
+                <button
+                  type="button"
+                  onClick={handleRunDiagnostic}
+                  disabled={runningDiag}
+                  className="text-primary hover:underline font-bold flex items-center gap-1 cursor-pointer"
+                >
+                  {runningDiag ? <RefreshCw className="w-3 h-3 animate-spin" /> : <ShieldCheck className="w-3 h-3" />}
+                  <span>Tester l'état du serveur PocketBase</span>
                 </button>
               </div>
             </div>
