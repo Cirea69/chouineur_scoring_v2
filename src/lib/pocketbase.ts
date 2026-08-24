@@ -47,16 +47,38 @@ export const pb = {
    * Auth methods
    */
   isLoggedIn: (): boolean => {
-    return client.authStore.isValid;
+    return client.authStore.isValid && !!client.authStore.record;
   },
 
   getCurrentUser: (): any => {
+    if (!client.authStore.isValid) {
+      return null;
+    }
     return client.authStore.record;
   },
 
   login: async (identity: string, password: string): Promise<any> => {
-    const authData = await client.collection('users').authWithPassword(identity, password);
-    return authData.record;
+    const cleanIdentity = identity.trim();
+    // 1. Try standard 'users' auth
+    try {
+      const authData = await client.collection('users').authWithPassword(cleanIdentity, password);
+      return authData.record;
+    } catch (err: any) {
+      // 2. Try PocketBase Superusers / Admins if user is using PocketBase Admin credentials
+      if (client.admins) {
+        try {
+          const adminAuth = await (client.admins as any).authWithPassword(cleanIdentity, password);
+          return adminAuth.admin || { id: adminAuth.admin?.id || "admin", email: cleanIdentity, name: "Admin PocketBase" };
+        } catch (eAdmin) {}
+      }
+      try {
+        const superAuth = await client.collection('_superusers').authWithPassword(cleanIdentity, password);
+        return superAuth.record;
+      } catch (eSuper) {}
+
+      // Re-throw original error with helpful explanation
+      throw err;
+    }
   },
 
   register: async (email: string, password: string, name: string): Promise<any> => {

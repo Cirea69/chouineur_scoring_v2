@@ -16,7 +16,10 @@ import {
   RefreshCw,
   ShieldCheck,
   BookmarkPlus,
-  History
+  History,
+  Eye,
+  EyeOff,
+  Sparkles
 } from "lucide-react";
 import { pb, getPocketBaseUrl, setPocketBaseUrl } from "../lib/pocketbase";
 
@@ -47,6 +50,8 @@ export default function AccountModal({
   const [identity, setIdentity] = useState("");
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [showSwitchForm, setShowSwitchForm] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -62,6 +67,7 @@ export default function AccountModal({
     if (isOpen) {
       setErrorMsg(null);
       setSuccessMsg(null);
+      setShowSwitchForm(false);
     }
   }, [isOpen]);
 
@@ -221,7 +227,7 @@ export default function AccountModal({
         )}
 
         {/* LOGGED IN USER STATE */}
-        {currentUser ? (
+        {currentUser && !showSwitchForm ? (
           <div className="space-y-4">
             <div className="p-4 bg-primary/5 dark:bg-primary/10 border border-primary/20 rounded-xl space-y-2">
               <div className="flex items-center justify-between">
@@ -347,14 +353,29 @@ export default function AccountModal({
               </p>
             </div>
 
-            <button
-              type="button"
-              onClick={handleLogout}
-              className="w-full flex items-center justify-center gap-2 py-2.5 px-4 bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 text-red-600 dark:text-red-400 rounded-xl text-xs font-bold transition-all cursor-pointer"
-            >
-              <LogOut className="w-4 h-4" />
-              <span>Se déconnecter (Revenir en mode local)</span>
-            </button>
+            <div className="grid grid-cols-2 gap-2 pt-1">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowSwitchForm(true);
+                  setErrorMsg(null);
+                  setSuccessMsg(null);
+                }}
+                className="flex items-center justify-center gap-1.5 py-2.5 px-3 bg-secondary/10 hover:bg-secondary/20 border border-secondary/30 text-secondary rounded-xl text-xs font-bold transition-all cursor-pointer"
+              >
+                <LogIn className="w-4 h-4" />
+                <span>Changer de compte</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={handleLogout}
+                className="flex items-center justify-center gap-1.5 py-2.5 px-3 bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 text-red-600 dark:text-red-400 rounded-xl text-xs font-bold transition-all cursor-pointer"
+              >
+                <LogOut className="w-4 h-4" />
+                <span>Déconnexion</span>
+              </button>
+            </div>
           </div>
         ) : (
           /* NOT LOGGED IN STATE (FORM FOR LOGIN / REGISTER) */
@@ -362,9 +383,9 @@ export default function AccountModal({
             <div className="p-3 bg-stone-100 dark:bg-stone-800/60 border border-stone-300/60 dark:border-stone-700 rounded-xl text-xs text-on-surface-variant flex items-start gap-2.5">
               <CloudOff className="w-4 h-4 text-primary shrink-0 mt-0.5" />
               <div>
-                <p className="font-bold text-on-surface">Mode Invité (Local)</p>
+                <p className="font-bold text-on-surface">Connexion Compte PocketBase</p>
                 <p className="mt-0.5">
-                  L'application fonctionne à 100% sans compte ! Connectez-vous uniquement si vous souhaitez sauvegarder vos profils et parties sur PocketBase.
+                  Saisissez l'e-mail et le mot de passe de votre compte PocketBase pour synchroniser vos profils et parties entre tous vos appareils.
                 </p>
               </div>
             </div>
@@ -431,7 +452,7 @@ export default function AccountModal({
                   <Mail className="w-4 h-4 absolute left-3 top-2.5 text-on-surface-variant/60" />
                   <input
                     type="text"
-                    placeholder="votre@email.com"
+                    placeholder="votre@email.com ou pseudo"
                     value={identity}
                     onChange={(e) => setIdentity(e.target.value)}
                     required
@@ -447,13 +468,21 @@ export default function AccountModal({
                 <div className="relative">
                   <KeyRound className="w-4 h-4 absolute left-3 top-2.5 text-on-surface-variant/60" />
                   <input
-                    type="password"
+                    type={showPassword ? "text" : "password"}
                     placeholder="••••••••"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     required
-                    className="w-full pl-9 pr-3 py-2 bg-surface-container-low border border-outline-variant rounded-xl text-xs font-bold text-on-surface focus:outline-hidden focus:border-primary"
+                    className="w-full pl-9 pr-10 py-2 bg-surface-container-low border border-outline-variant rounded-xl text-xs font-bold text-on-surface focus:outline-hidden focus:border-primary"
                   />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-2.5 text-on-surface-variant/70 hover:text-on-surface cursor-pointer p-0.5"
+                    title={showPassword ? "Masquer le mot de passe" : "Afficher le mot de passe"}
+                  >
+                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
                 </div>
                 {mode === "register" && (
                   <span className="text-[10px] text-on-surface-variant mt-0.5 block italic">
@@ -472,15 +501,29 @@ export default function AccountModal({
                 ) : mode === "login" ? (
                   <>
                     <LogIn className="w-4 h-4" />
-                    <span>Se Connecter</span>
+                    <span>Se Connecter à PocketBase</span>
                   </>
                 ) : (
                   <>
                     <UserPlus className="w-4 h-4" />
-                    <span>Créer mon Compte</span>
+                    <span>Créer mon Compte PocketBase</span>
                   </>
                 )}
               </button>
+
+              {currentUser && showSwitchForm && (
+                <button
+                  type="button"
+                  onClick={() => setShowSwitchForm(false)}
+                  className="w-full py-2 text-center text-xs text-on-surface-variant hover:text-on-surface underline cursor-pointer"
+                >
+                  Annuler et conserver le compte actif ({currentUser.email})
+                </button>
+              )}
+
+              <div className="p-2.5 bg-primary/5 rounded-xl border border-primary/10 text-[11px] text-on-surface-variant">
+                💡 <span className="font-bold text-primary">Note PocketBase :</span> Si vous n'avez pas encore d'utilisateur créé, basculez sur l'onglet <strong>« Créer un compte »</strong> pour enregistrer votre identifiant en quelques secondes.
+              </div>
             </form>
           </div>
         )}
