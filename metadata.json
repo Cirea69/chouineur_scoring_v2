@@ -1,0 +1,6 @@
+{
+  "name": "chouineur_scoring",
+  "description": "Application ludique et loufoque pour enregistrer vos parties, gérer les scores, les chouinages, personnaliser vos avatars et suivre l'historique des méfaits.",
+  "requestFramePermissions": ["camera"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
