@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, FormEvent } from "react";
 import {
   X,
   User,
@@ -25,7 +25,13 @@ interface AccountModalProps {
   onClose: () => void;
   currentUser: any;
   onUserChanged: (user: any) => void;
-  onSyncTriggered?: () => void;
+  onSyncTriggered?: () => Promise<any>;
+  syncStats?: {
+    countProfiles: number;
+    countHistory: number;
+    lastSyncTime?: string | null;
+  };
+  isSyncing?: boolean;
 }
 
 export default function AccountModal({
@@ -33,7 +39,9 @@ export default function AccountModal({
   onClose,
   currentUser,
   onUserChanged,
-  onSyncTriggered
+  onSyncTriggered,
+  syncStats,
+  isSyncing = false
 }: AccountModalProps) {
   const [mode, setMode] = useState<"login" | "register">("login");
   const [identity, setIdentity] = useState("");
@@ -42,6 +50,7 @@ export default function AccountModal({
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [localSyncing, setLocalSyncing] = useState(false);
 
   // PocketBase Server URL configuration
   const [serverUrl, setServerUrlState] = useState(getPocketBaseUrl());
@@ -56,7 +65,26 @@ export default function AccountModal({
 
   if (!isOpen) return null;
 
-  const handleLogin = async (e: React.FormEvent) => {
+  const handleTriggerSync = async () => {
+    if (!onSyncTriggered) return;
+    setLocalSyncing(true);
+    setErrorMsg(null);
+    setSuccessMsg(null);
+    try {
+      const res = await onSyncTriggered();
+      if (res && res.success) {
+        setSuccessMsg(res.message || "Synchronisation réussie !");
+      } else {
+        setSuccessMsg("Synchronisation terminée ! Vos données sont à jour.");
+      }
+    } catch (e: any) {
+      setErrorMsg(e?.message || "Erreur de synchronisation.");
+    } finally {
+      setLocalSyncing(false);
+    }
+  };
+
+  const handleLogin = async (e: FormEvent) => {
     e.preventDefault();
     if (!identity.trim() || !password.trim()) {
       setErrorMsg("Veuillez remplir l'identifiant et le mot de passe.");
@@ -70,10 +98,12 @@ export default function AccountModal({
       const user = await pb.login(identity, password);
       onUserChanged(user);
       setSuccessMsg(`Connexion réussie ! Bienvenue ${user.name || user.email}`);
+      if (onSyncTriggered) {
+        await onSyncTriggered();
+      }
       setTimeout(() => {
-        if (onSyncTriggered) onSyncTriggered();
         onClose();
-      }, 1500);
+      }, 1800);
     } catch (err: any) {
       console.error("Erreur de connexion PocketBase:", err);
       setErrorMsg(
@@ -84,7 +114,7 @@ export default function AccountModal({
     }
   };
 
-  const handleRegister = async (e: React.FormEvent) => {
+  const handleRegister = async (e: FormEvent) => {
     e.preventDefault();
     if (!identity.trim() || !password.trim()) {
       setErrorMsg("Veuillez indiquer un e-mail et un mot de passe.");
@@ -175,14 +205,14 @@ export default function AccountModal({
 
         {/* LOGGED IN USER STATE */}
         {currentUser ? (
-          <div className="space-y-5">
+          <div className="space-y-4">
             <div className="p-4 bg-primary/5 dark:bg-primary/10 border border-primary/20 rounded-xl space-y-2">
               <div className="flex items-center justify-between">
                 <span className="text-xs uppercase tracking-wider font-extrabold text-primary flex items-center gap-1.5">
                   <ShieldCheck className="w-4 h-4" /> Compte actif
                 </span>
                 <span className="bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 text-[10px] font-bold px-2 py-0.5 rounded-full border border-emerald-500/30 flex items-center gap-1">
-                  <Cloud className="w-3 h-3" /> Synchro Cloud
+                  <Cloud className="w-3 h-3" /> Connecté
                 </span>
               </div>
               <p className="font-bold text-sm text-on-surface">
@@ -191,32 +221,62 @@ export default function AccountModal({
               <p className="text-xs text-on-surface-variant font-mono">{currentUser.email}</p>
             </div>
 
-            <div className="p-4 bg-surface-container-low/70 dark:bg-stone-800/50 border border-outline-variant/60 rounded-xl space-y-2 text-xs text-on-surface-variant">
-              <p className="font-bold text-on-surface flex items-center gap-2">
-                <Cloud className="w-4 h-4 text-primary" />
-                Avantages de votre connexion :
-              </p>
-              <ul className="list-disc pl-4 space-y-1">
-                <li>Vos profils de joueurs favoris sont synchronisés sur votre compte.</li>
-                <li>Vos parties privées sont conservées en sécurité.</li>
-                <li>Vous pouvez publier vos plus beaux scores dans l'historique communautaire.</li>
-              </ul>
-            </div>
+            {/* Multi-Device Synchronisation Panel */}
+            <div className="p-4 bg-surface-container-low border-2 border-primary/30 rounded-xl space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <RefreshCw className={`w-4 h-4 text-primary ${localSyncing || isSyncing ? 'animate-spin' : ''}`} />
+                  <span className="text-xs font-black text-on-surface uppercase tracking-wide">
+                    Synchronisation Multi-Appareils
+                  </span>
+                </div>
+                <span className="text-[10px] bg-primary/10 text-primary font-bold px-2 py-0.5 rounded-full">
+                  Smartphone 📱 ⟷ PC 💻
+                </span>
+              </div>
 
-            {onSyncTriggered && (
-              <button
-                type="button"
-                onClick={() => {
-                  onSyncTriggered();
-                  setSuccessMsg("Synchronisation avec PocketBase lancée !");
-                  setTimeout(() => setSuccessMsg(null), 2500);
-                }}
-                className="w-full flex items-center justify-center gap-2 py-2.5 px-4 bg-surface-container hover:bg-surface-container-high border border-outline-variant rounded-xl text-xs font-bold text-on-surface transition-all cursor-pointer"
-              >
-                <RefreshCw className="w-4 h-4 text-primary" />
-                <span>Synchroniser mes données maintenant</span>
-              </button>
-            )}
+              <div className="grid grid-cols-2 gap-2 text-center">
+                <div className="p-2 bg-surface-bright dark:bg-stone-800 rounded-lg border border-outline-variant/60">
+                  <p className="text-[10px] font-bold text-on-surface-variant uppercase">Chouineurs</p>
+                  <p className="text-sm font-black text-primary mt-0.5">
+                    {syncStats?.countProfiles ?? 0} enregistrés
+                  </p>
+                </div>
+                <div className="p-2 bg-surface-bright dark:bg-stone-800 rounded-lg border border-outline-variant/60">
+                  <p className="text-[10px] font-bold text-on-surface-variant uppercase">Parties Jouées</p>
+                  <p className="text-sm font-black text-tertiary mt-0.5">
+                    {syncStats?.countHistory ?? 0} dans l'historique
+                  </p>
+                </div>
+              </div>
+
+              {onSyncTriggered && (
+                <button
+                  type="button"
+                  disabled={localSyncing || isSyncing}
+                  onClick={handleTriggerSync}
+                  className="w-full flex items-center justify-center gap-2 py-3 px-4 bg-primary hover:bg-primary/90 text-on-primary rounded-xl text-xs font-black shadow-md transition-all cursor-pointer disabled:opacity-50"
+                >
+                  {localSyncing || isSyncing ? (
+                    <>
+                      <RefreshCw className="w-4 h-4 animate-spin" />
+                      <span>Synchronisation en cours...</span>
+                    </>
+                  ) : (
+                    <>
+                      <RefreshCw className="w-4 h-4" />
+                      <span>Synchroniser avec mon compte maintenant</span>
+                    </>
+                  )}
+                </button>
+              )}
+
+              <p className="text-[10px] text-on-surface-variant text-center italic">
+                {syncStats?.lastSyncTime
+                  ? `Dernière synchro réussie : ${syncStats.lastSyncTime}`
+                  : "Cliquez pour récupérer et envoyer vos Chouineurs et parties."}
+              </p>
+            </div>
 
             <button
               type="button"

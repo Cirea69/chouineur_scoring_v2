@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { Player, Game, HistoriquePartie, Theme } from "./types";
+import { Player, Game, HistoriquePartie, Theme, SavedProfile } from "./types";
 import TopAppBar from "./components/TopAppBar";
 import BottomNavBar from "./components/BottomNavBar";
 import JoueursView from "./components/JoueursView";
@@ -160,6 +160,53 @@ export default function App() {
     ];
   });
 
+  // 4b. Initialiser les profils favoris (Chouineurs enregistrés)
+  const [savedProfiles, setSavedProfiles] = useState<SavedProfile[]>(() => {
+    const cached = localStorage.getItem("chouine_saved_profiles");
+    if (cached) {
+      try {
+        return JSON.parse(cached);
+      } catch (e) {
+        console.error(e);
+      }
+    }
+    return [
+      {
+        id: "sp-1",
+        name: "Balthazar",
+        subtitle: "Prêt à chouiner pour la victoire.",
+        avatar: "https://lh3.googleusercontent.com/aida-public/AB6AXuAZNvniEMANB7oOLI39p7aqpV6uNbkuiE_MtYMHqm1KB3PNatlWSO3H8tdRY23ghZTbTsGkxi3L0gSZDHK1xqd1lS_blQ6Z_eCKjLCXD8m7aA--eJVVydz843HrHoepqeQsU_5B0YZxWKehx8yyKuBtlZ8_Tl-Juye_SkjsbOO24HxokhqFSqyqVh3zzt393qgtWH4C55C4LFVAwUNfuSBDhnDe9fKLJuLfDTGfp8HCx-Or4zC702U3VR2_I34sVLwJTUfiyFBIB0c",
+        color: "amber"
+      },
+      {
+        id: "sp-2",
+        name: "Gaston",
+        subtitle: "Râle dès qu'il pioche une mauvaise carte.",
+        avatar: "https://lh3.googleusercontent.com/aida-public/AB6AXuC1utXBxP-J5exPJaUjKEgRFjZbIZfVKBClrhy-f8QPtTmjNtVGpL-SsveOU-bEseJdPHRZLgpNIUZMUk0nTQvvLCcohKKCgzcEUev2cpEPfiK_TRPptVba0VJ0BCj_bxZZPGINpAwdtBEK1AptqKmnXES11w83Q59hw3uMXrht3vhMS8n9btXfitsGEV9-BdMYnM0Li--EHaRYu9_7TPnxJbCg8rhoiMxhjQgONTn7RJ3EkuvJwjkIborF9-LGcemfGO7YTZ6OTrg",
+        color: "emerald"
+      },
+      {
+        id: "sp-3",
+        name: "Simone",
+        subtitle: "Boude silencieusement quand elle perd.",
+        avatar: "https://lh3.googleusercontent.com/aida-public/AB6AXuBaJRKZ4qEJjyYEGZPqFnaIb7zUW3TN__o-cpgGc5Vrk11CMRolIcTpJ9mm-q_wNekoMy-xMMVyrpqfLc8-xqSohG758MMaTUgOAzvxs5e4s3eyolmGzRVqWdxKsdtv1YztFdWL-AdmXwmf5e-G3-Jlw-GBIEHM8bt90wgGv4h0XyOssqI_cZcsoHIQr5vMz-GrlC29BgJCQ1xO6eDlnTlMDPdROphYcg3XaxBVeVLiqmximajl2cxYjDuqTARkv68cblGVh2ASfzo",
+        color: "rose"
+      }
+    ];
+  });
+
+  const handleUpdateSavedProfiles = (newProfiles: SavedProfile[]) => {
+    setSavedProfiles(newProfiles);
+    localStorage.setItem("chouine_saved_profiles", JSON.stringify(newProfiles));
+    if (currentUser || pb.isLoggedIn()) {
+      pb.syncAllUserData({
+        profiles: newProfiles,
+        history: historique,
+        players
+      }).catch((e) => console.warn("Sync update profile warning:", e));
+    }
+  };
+
   // 5. Interface UI active et dialogs
   const [currentTab, setCurrentTab] = useState<"players" | "lobby" | "game" | "scores">("players");
 
@@ -186,6 +233,11 @@ export default function App() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [accountOpen, setAccountOpen] = useState(false);
   const [currentUser, setCurrentUser] = useState<any>(() => pb.getCurrentUser());
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [lastSyncTime, setLastSyncTime] = useState<string | null>(() => {
+    const t = localStorage.getItem("chouine_last_sync_time");
+    return t ? new Date(t).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" }) : null;
+  });
 
   // Listen to PocketBase Auth changes
   useEffect(() => {
@@ -195,39 +247,41 @@ export default function App() {
     return () => unsubscribe();
   }, []);
 
-  // Cloud sync handler
+  // Multi-Device Cloud sync handler (Both Profiles and Game History)
   const handleSyncCloudData = async () => {
-    if (!pb.isLoggedIn()) return;
+    setIsSyncing(true);
     try {
-      // 1. Sync saved profiles
-      const localProfilesRaw = localStorage.getItem("chouine_saved_profiles");
-      let localProfiles = [];
-      if (localProfilesRaw) {
-        try { localProfiles = JSON.parse(localProfilesRaw); } catch (e) {}
-      }
+      const res = await pb.syncAllUserData({
+        profiles: savedProfiles,
+        history: historique,
+        players: players
+      });
 
-      const cloudProfiles = await pb.getUserProfilesFromCloud();
-      if (cloudProfiles && Array.isArray(cloudProfiles) && cloudProfiles.length > 0) {
-        // Merge cloud profiles with local profiles
-        const mergedMap = new Map();
-        localProfiles.forEach((p: any) => mergedMap.set(p.name?.toLowerCase(), p));
-        cloudProfiles.forEach((p: any) => mergedMap.set(p.name?.toLowerCase(), p));
-        const mergedArray = Array.from(mergedMap.values());
-        localStorage.setItem("chouine_saved_profiles", JSON.stringify(mergedArray));
-        // Push merged list back to cloud
-        await pb.saveUserProfilesToCloud(mergedArray);
-      } else if (localProfiles.length > 0) {
-        // Push initial local profiles to cloud
-        await pb.saveUserProfilesToCloud(localProfiles);
+      if (res.mergedProfiles && Array.isArray(res.mergedProfiles)) {
+        setSavedProfiles(res.mergedProfiles);
       }
-    } catch (e) {
+      if (res.mergedHistory && Array.isArray(res.mergedHistory)) {
+        setHistorique(res.mergedHistory);
+      }
+      const formattedTime = new Date().toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
+      setLastSyncTime(formattedTime);
+      return res;
+    } catch (e: any) {
       console.warn("Échec de la synchronisation cloud:", e);
+      return {
+        success: false,
+        message: e?.message || "Erreur de connexion lors de la synchronisation.",
+        countProfiles: savedProfiles.length,
+        countHistory: historique.length
+      };
+    } finally {
+      setIsSyncing(false);
     }
   };
 
-  // Sync automatically when user connects
+  // Sync automatically when user connects or loads
   useEffect(() => {
-    if (currentUser) {
+    if (currentUser || pb.isLoggedIn()) {
       handleSyncCloudData();
     }
   }, [currentUser]);
@@ -749,7 +803,18 @@ export default function App() {
         isShared: false,
       };
 
-      setHistorique((prev) => [newHistoryEntry, ...prev]);
+      const updatedHist = [newHistoryEntry, ...historique];
+      setHistorique(updatedHist);
+      localStorage.setItem("chouine_historique", JSON.stringify(updatedHist));
+
+      // Synchronisation automatique en tâche de fond si connecté
+      if (currentUser || pb.isLoggedIn()) {
+        pb.syncAllUserData({
+          profiles: savedProfiles,
+          history: updatedHist,
+          players: nextPlayers
+        }).catch((err) => console.warn("Background auto sync game warning:", err));
+      }
 
       setGameStatus("termine");
       setMancheActuelle(maxRounds);
@@ -878,6 +943,10 @@ export default function App() {
             players={players}
             onUpdatePlayers={handleUpdatePlayers}
             onStartGame={handleStartGame}
+            savedProfiles={savedProfiles}
+            onUpdateSavedProfiles={handleUpdateSavedProfiles}
+            onSyncCloud={handleSyncCloudData}
+            currentUser={currentUser}
             isGM={isGM}
             isSpectator={isSpectator}
             multiplayerMode={multiplayerMode}
@@ -926,6 +995,8 @@ export default function App() {
             onShareHistoryEntry={handleShareHistoryEntry}
             onUnshareHistoryEntry={handleUnshareHistoryEntry}
             onBackToGame={() => handleTabChange("game")}
+            onSyncCloud={handleSyncCloudData}
+            currentUser={currentUser}
           />
         )}
       </main>
@@ -958,6 +1029,12 @@ export default function App() {
         currentUser={currentUser}
         onUserChanged={setCurrentUser}
         onSyncTriggered={handleSyncCloudData}
+        syncStats={{
+          countProfiles: savedProfiles.length,
+          countHistory: historique.length,
+          lastSyncTime: lastSyncTime
+        }}
+        isSyncing={isSyncing}
       />
     </div>
   );

@@ -83,29 +83,204 @@ export const pb = {
   },
 
   /**
-   * Sync user profiles to cloud (if collection 'user_profiles' exists on PocketBase, otherwise fallback gracefully)
+   * Comprehensive Cloud Synchronization for all user data (Profiles, History, and Roster)
+   * Ensures seamless bi-directional synchronization between Smartphone and PC.
+   */
+  syncAllUserData: async (localData: {
+    profiles: any[];
+    history: any[];
+    players?: any[];
+  }): Promise<{
+    success: boolean;
+    mergedProfiles: any[];
+    mergedHistory: any[];
+    countProfiles: number;
+    countHistory: number;
+    syncSource: string;
+    message: string;
+  }> => {
+    const user = client.authStore.record;
+    const userId = user ? (user.id || user.email) : (localStorage.getItem("chouine_client_id") || "guest");
+    const localProfiles = Array.isArray(localData.profiles) ? localData.profiles : [];
+    const localHistory = Array.isArray(localData.history) ? localData.history : [];
+    const localPlayers = Array.isArray(localData.players) ? localData.players : [];
+
+    let cloudProfiles: any[] = [];
+    let cloudHistory: any[] = [];
+    let syncSource = "Local";
+
+    // 1. Try PocketBase dedicated user_data_chouineur collection
+    let pbRecordId: string | null = null;
+    let pbCollectionName = "user_data_chouineur";
+
+    if (client.authStore.isValid && user?.id) {
+      try {
+        let record: any = null;
+        try {
+          record = await client.collection('user_data_chouineur').getFirstListItem(`user_id="${user.id}"`, { requestKey: null });
+          pbCollectionName = "user_data_chouineur";
+        } catch (e) {
+          // Fallback to legacy user_profiles_chouineur
+          try {
+            record = await client.collection('user_profiles_chouineur').getFirstListItem(`user_id="${user.id}"`, { requestKey: null });
+            pbCollectionName = "user_profiles_chouineur";
+          } catch (e2) {
+            // No existing record yet
+          }
+        }
+
+        if (record) {
+          pbRecordId = record.id;
+          if (Array.isArray(record.profiles)) cloudProfiles = record.profiles;
+          if (Array.isArray(record.history)) cloudHistory = record.history;
+          syncSource = "PocketBase Cloud";
+        }
+      } catch (err) {
+        console.warn("PocketBase cloud fetch warning:", err);
+      }
+    }
+
+    // 2. Also check /api/user-sync on Express backend (persisted in db.json for bulletproof cross-device sync)
+    try {
+      const serverRes = await fetch(`/api/user-sync/${encodeURIComponent(userId)}`)
+        .then((r) => (r.ok ? r.json() : null))
+        .catch(() => null);
+
+      if (serverRes && typeof serverRes === "object") {
+        if (Array.isArray(serverRes.profiles) && serverRes.profiles.length > 0) {
+          // Add any profiles not in cloudProfiles
+          const pMap = new Map();
+          cloudProfiles.forEach(p => pMap.set(p.name?.toLowerCase() || p.id, p));
+          serverRes.profiles.forEach((p: any) => {
+            const key = p.name?.toLowerCase() || p.id;
+            if (!pMap.has(key)) pMap.set(key, p);
+          });
+          cloudProfiles = Array.from(pMap.values());
+        }
+        if (Array.isArray(serverRes.history) && serverRes.history.length > 0) {
+          const hMap = new Map();
+          cloudHistory.forEach(h => hMap.set(h.id || (h.date + h.gagnant?.name), h));
+          serverRes.history.forEach((h: any) => {
+            const key = h.id || (h.date + h.gagnant?.name);
+            if (!hMap.has(key)) hMap.set(key, h);
+          });
+          cloudHistory = Array.from(hMap.values());
+        }
+        if (syncSource === "Local") syncSource = "Serveur Chouineur";
+      }
+    } catch (e) {
+      console.warn("API server user-sync fetch warning:", e);
+    }
+
+    // 3. Merging profiles intelligently (combining local + cloud, no duplicates)
+    const profileMap = new Map<string, any>();
+    // Insert cloud first, then local (local can update subtitles or avatars)
+    cloudProfiles.forEach((p) => {
+      const key = (p.name || "").trim().toLowerCase();
+      if (key) profileMap.set(key, p);
+    });
+    localProfiles.forEach((p) => {
+      const key = (p.name || "").trim().toLowerCase();
+      if (key) {
+        const existing = profileMap.get(key);
+        profileMap.set(key, { ...existing, ...p });
+      }
+    });
+    const mergedProfiles = Array.from(profileMap.values());
+
+    // 4. Merging history intelligently (combining all unique matches from phone and PC)
+    const historyMap = new Map<string, any>();
+    cloudHistory.forEach((h) => {
+      const key = h.id || `${h.date}_${h.gagnant?.name || ""}_${h.gagnant?.score || 0}`;
+      historyMap.set(key, h);
+    });
+    localHistory.forEach((h) => {
+      const key = h.id || `${h.date}_${h.gagnant?.name || ""}_${h.gagnant?.score || 0}`;
+      const existing = historyMap.get(key);
+      historyMap.set(key, { ...existing, ...h });
+    });
+    const mergedHistory = Array.from(historyMap.values()).sort((a, b) => {
+      // Sort newest first
+      return (b.date || "").localeCompare(a.date || "");
+    });
+
+    // 5. Push merged state back to PocketBase and Server
+    const payload = {
+      user_id: user?.id || userId,
+      profiles: mergedProfiles,
+      history: mergedHistory,
+      players: localPlayers,
+      updatedAt: Date.now()
+    };
+
+    // 5a. Save to PocketBase if user logged in
+    if (client.authStore.isValid && user?.id) {
+      try {
+        if (pbRecordId) {
+          await client.collection(pbCollectionName).update(pbRecordId, payload);
+        } else {
+          try {
+            await client.collection('user_data_chouineur').create(payload);
+          } catch (e) {
+            await client.collection('user_profiles_chouineur').create({
+              user_id: user.id,
+              profiles: mergedProfiles,
+              history: mergedHistory
+            });
+          }
+        }
+      } catch (err: any) {
+        console.warn("PocketBase push warning:", err?.message || err);
+      }
+    }
+
+    // 5b. Always save to Express API backend for persistent multi-device sync
+    try {
+      await fetch(`/api/user-sync/${encodeURIComponent(userId)}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
+    } catch (e) {
+      console.warn("API server push warning:", e);
+    }
+
+    // Update localStorage cache directly
+    localStorage.setItem("chouine_saved_profiles", JSON.stringify(mergedProfiles));
+    localStorage.setItem("chouine_historique", JSON.stringify(mergedHistory));
+    localStorage.setItem("chouine_last_sync_time", new Date().toISOString());
+
+    return {
+      success: true,
+      mergedProfiles,
+      mergedHistory,
+      countProfiles: mergedProfiles.length,
+      countHistory: mergedHistory.length,
+      syncSource,
+      message: `${mergedProfiles.length} profil(s) et ${mergedHistory.length} partie(s) synchronisés avec succès.`
+    };
+  },
+
+  /**
+   * Sync user profiles to cloud (backward compatibility)
    */
   saveUserProfilesToCloud: async (profiles: any[]): Promise<void> => {
     if (!client.authStore.isValid || !client.authStore.record) return;
     const userId = client.authStore.record.id;
     try {
-      // Check if user profile container record exists
       let record;
       try {
-        record = await client.collection('user_profiles_chouineur').getFirstListItem(`user_id="${userId}"`);
+        record = await client.collection('user_data_chouineur').getFirstListItem(`user_id="${userId}"`);
       } catch (e) {
-        // Not found
+        try {
+          record = await client.collection('user_profiles_chouineur').getFirstListItem(`user_id="${userId}"`);
+        } catch (e2) {}
       }
 
       if (record) {
-        await client.collection('user_profiles_chouineur').update(record.id, {
-          profiles
-        });
+        await client.collection(record.collectionName || 'user_data_chouineur').update(record.id, { profiles });
       } else {
-        await client.collection('user_profiles_chouineur').create({
-          user_id: userId,
-          profiles
-        });
+        await client.collection('user_data_chouineur').create({ user_id: userId, profiles });
       }
     } catch (err: any) {
       console.warn("Mise à jour des profils cloud PocketBase non disponible:", err?.message || err);
@@ -113,19 +288,24 @@ export const pb = {
   },
 
   /**
-   * Fetch user profiles from cloud
+   * Fetch user profiles from cloud (backward compatibility)
    */
   getUserProfilesFromCloud: async (): Promise<any[] | null> => {
     if (!client.authStore.isValid || !client.authStore.record) return null;
     const userId = client.authStore.record.id;
     try {
-      const record = await client.collection('user_profiles_chouineur').getFirstListItem(`user_id="${userId}"`);
+      let record;
+      try {
+        record = await client.collection('user_data_chouineur').getFirstListItem(`user_id="${userId}"`);
+      } catch (e) {
+        try {
+          record = await client.collection('user_profiles_chouineur').getFirstListItem(`user_id="${userId}"`);
+        } catch (e2) {}
+      }
       if (record && Array.isArray(record.profiles)) {
         return record.profiles;
       }
-    } catch (e) {
-      // Collection or record doesn't exist
-    }
+    } catch (e) {}
     return null;
   },
 

@@ -9,6 +9,10 @@ interface JoueursViewProps {
   players: Player[];
   onUpdatePlayers: (players: Player[]) => void;
   onStartGame: () => void;
+  savedProfiles?: SavedProfile[];
+  onUpdateSavedProfiles?: (profiles: SavedProfile[]) => void;
+  onSyncCloud?: () => void;
+  currentUser?: any;
   isGM?: boolean;
   isSpectator?: boolean;
   multiplayerMode?: string;
@@ -39,6 +43,10 @@ export default function JoueursView({
   players,
   onUpdatePlayers,
   onStartGame,
+  savedProfiles: propSavedProfiles,
+  onUpdateSavedProfiles,
+  onSyncCloud,
+  currentUser,
   isGM = true,
   isSpectator = false,
   multiplayerMode = "local",
@@ -65,7 +73,7 @@ export default function JoueursView({
     playerId: null,
   });
 
-  const [savedProfiles, setSavedProfiles] = useState<SavedProfile[]>(() => {
+  const [localSavedProfiles, setLocalSavedProfiles] = useState<SavedProfile[]>(() => {
     const cached = localStorage.getItem("chouine_saved_profiles");
     if (cached) {
       try {
@@ -99,6 +107,20 @@ export default function JoueursView({
     ];
   });
 
+  const savedProfiles = propSavedProfiles || localSavedProfiles;
+
+  const updateProfiles = (updated: SavedProfile[]) => {
+    setLocalSavedProfiles(updated);
+    if (onUpdateSavedProfiles) {
+      onUpdateSavedProfiles(updated);
+    } else {
+      localStorage.setItem("chouine_saved_profiles", JSON.stringify(updated));
+    }
+    if (onSyncCloud) {
+      onSyncCloud();
+    }
+  };
+
   const [savedFeedback, setSavedFeedback] = useState<string | null>(null);
 
   const handleSaveProfile = (p: Player) => {
@@ -118,9 +140,8 @@ export default function JoueursView({
         { id: Math.random().toString(36).substring(2, 9), name: p.name, subtitle: p.subtitle, avatar: p.avatar, color: p.color }
       ];
     }
-    setSavedProfiles(updated);
-    localStorage.setItem("chouine_saved_profiles", JSON.stringify(updated));
-    setSavedFeedback(`Profil "${p.name}" enregistré sur cet appareil !`);
+    updateProfiles(updated);
+    setSavedFeedback(`Profil "${p.name}" enregistré ${currentUser ? "et synchronisé sur le Cloud !" : "sur cet appareil !"}`);
     setTimeout(() => setSavedFeedback(null), 3500);
   };
 
@@ -153,10 +174,9 @@ export default function JoueursView({
 
   const handleDeleteSavedProfile = (id: string, name: string) => {
     const filtered = savedProfiles.filter((sp) => sp.id !== id);
-    setSavedProfiles(filtered);
-    localStorage.setItem("chouine_saved_profiles", JSON.stringify(filtered));
-    setSavedFeedback(`Profil "${name}" retiré de vos favoris.`);
-    setTimeout(() => setSavedFeedback(null), 3000);
+    updateProfiles(filtered);
+    setSavedFeedback(`Profil "${name}" supprimé des Chouineurs.`);
+    setTimeout(() => setSavedFeedback(null), 2500);
   };
 
   const handleNameChange = (id: string, newName: string) => {
@@ -285,16 +305,29 @@ export default function JoueursView({
 
       {/* Mes Chouineurs Enregistrés (Bibliothèque Locale de Profils) */}
       <div className="mb-6 p-4 bg-surface-container-low/70 dark:bg-surface-container/30 border-2 border-outline-variant/60 rounded-2xl shadow-xs">
-        <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
           <div className="flex items-center gap-2">
             <BookmarkPlus className="w-4 h-4 text-primary" />
             <span className="font-label-lg text-xs uppercase tracking-wider font-black text-primary dark:text-primary-fixed-dim">
               Mes Chouineurs Enregistrés ({savedProfiles.length})
             </span>
           </div>
-          <span className="text-[11px] text-on-surface-variant italic">
-            Appareil local
-          </span>
+          <div className="flex items-center gap-2">
+            {currentUser ? (
+              <button
+                type="button"
+                onClick={onSyncCloud}
+                className="text-[11px] bg-primary/10 hover:bg-primary/20 text-primary font-bold px-2 py-0.5 rounded-full border border-primary/30 flex items-center gap-1 cursor-pointer transition-all"
+                title="Synchroniser avec PocketBase (Smartphone & PC)"
+              >
+                <span>🔄 Synchro Cloud</span>
+              </button>
+            ) : (
+              <span className="text-[11px] text-on-surface-variant italic">
+                Appareil local
+              </span>
+            )}
+          </div>
         </div>
 
         {savedProfiles.length === 0 ? (

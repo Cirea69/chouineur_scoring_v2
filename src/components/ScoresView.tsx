@@ -27,6 +27,7 @@ import {
 import { Player, HistoriquePartie } from "../types";
 import { PARI_CARDS, checkPariMatch, getPlayerColorPreset } from "../constants";
 import { motion, AnimatePresence } from "motion/react";
+import { pb } from "../lib/pocketbase";
 
 interface ScoresViewProps {
   players: Player[];
@@ -38,6 +39,8 @@ interface ScoresViewProps {
   onShareHistoryEntry?: (entry: HistoriquePartie) => Promise<boolean>;
   onUnshareHistoryEntry?: (id: string) => Promise<boolean>;
   onBackToGame: () => void;
+  onSyncCloud?: () => void;
+  currentUser?: any;
 }
 
 // Icones pour les tours
@@ -53,6 +56,8 @@ export default function ScoresView({
   onShareHistoryEntry,
   onUnshareHistoryEntry,
   onBackToGame,
+  onSyncCloud,
+  currentUser,
 }: ScoresViewProps) {
   const [copiedNotification, setCopiedNotification] = useState<string | null>(null);
   const [selectedHistory, setSelectedHistory] = useState<HistoriquePartie | null>(null);
@@ -1015,14 +1020,24 @@ export default function ScoresView({
           </button>
         </div>
 
-        <div className="text-center flex justify-center gap-3">
+        <div className="text-center flex flex-wrap justify-center gap-3">
           <button
             onClick={handleExportMyLudo}
-            className="group relative inline-flex items-center gap-2 bg-secondary text-on-secondary hover:bg-secondary-container px-5 py-2.5 rounded-lg font-label-lg text-xs border-2 border-black/35 shadow-[3px_3px_0px_rgba(0,0,0,0.55)] hover:translate-x-[-1px] hover:translate-y-[-1px] transition-all cursor-pointer"
+            className="group relative inline-flex items-center gap-2 bg-secondary text-on-secondary hover:bg-secondary-container px-4 py-2 rounded-lg font-label-lg text-xs border-2 border-black/35 shadow-[3px_3px_0px_rgba(0,0,0,0.55)] hover:translate-x-[-1px] hover:translate-y-[-1px] transition-all cursor-pointer"
           >
             <Download className="w-4 h-4" />
             <span>Exporter vers MyLudo</span>
           </button>
+
+          {currentUser && onSyncCloud && (
+            <button
+              onClick={onSyncCloud}
+              className="inline-flex items-center gap-2 bg-primary/10 hover:bg-primary/20 text-primary px-4 py-2 rounded-lg font-label-lg text-xs border-2 border-primary/40 font-bold hover:scale-102 transition-all cursor-pointer"
+              title="Synchroniser vos parties entre smartphone et PC"
+            >
+              <span>🔄 Synchroniser avec le Cloud</span>
+            </button>
+          )}
         </div>
 
         {/* TAB 1: LOCAL HISTORY */}

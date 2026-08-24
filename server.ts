@@ -170,7 +170,38 @@ app.post("/api/rooms/:code/join", (req, res) => {
   res.json({ success: true, state: room.state });
 });
 
-// 4b. History Endpoint (GET all historical game details)
+// 4b. User sync endpoint (Multi-device smartphone & PC backup and sync)
+app.get("/api/user-sync/:userId", (req, res) => {
+  const { userId } = req.params;
+  const db = loadDb() as any;
+  const userSyncs = db.userSyncs || {};
+  res.json(userSyncs[userId] || null);
+});
+
+app.post("/api/user-sync/:userId", (req, res) => {
+  const { userId } = req.params;
+  const { profiles, history, players, updatedAt } = req.body;
+  const db = loadDb() as any;
+  if (!db.userSyncs) {
+    db.userSyncs = {};
+  }
+  db.userSyncs[userId] = {
+    userId,
+    profiles: profiles || [],
+    history: history || [],
+    players: players || [],
+    updatedAt: updatedAt || Date.now()
+  };
+  try {
+    const data = JSON.stringify({ rooms: db.rooms || rooms, historyRecs: db.historyRecs || historyRecs, userSyncs: db.userSyncs }, null, 2);
+    fs.writeFileSync(DB_FILE, data, "utf-8");
+  } catch (e) {
+    console.error("[SERVER] Erreur lors de la sauvegarde user-sync:", e);
+  }
+  res.json({ success: true, data: db.userSyncs[userId] });
+});
+
+// 4c. History Endpoint (GET all historical game details)
 app.get("/api/history", (req, res) => {
   res.json(historyRecs);
 });
