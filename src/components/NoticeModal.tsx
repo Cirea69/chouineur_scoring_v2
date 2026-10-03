@@ -172,20 +172,69 @@ export default function NoticeModal({ isOpen, onClose }: NoticeModalProps) {
                   <p className="text-xs text-on-surface-variant">
                     Chaque joueur doit choisir une carte pari disponible. <em>Attention : une carte réussie est validée et ne peut plus être rejouée dans la partie !</em>
                   </p>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px] pt-1">
-                    <div className="p-2 rounded-lg bg-orange-500/10 border border-orange-500/20 text-orange-900 dark:text-orange-300">
-                      <strong>🟧 Pari Orange (0-1) :</strong> 0 pli = 8 pts | 1 pli = 3 pts
+                  <div className="space-y-2.5 pt-1">
+                    {/* 1. ORANGE */}
+                    <div className="p-2.5 rounded-xl bg-amber-100/90 dark:bg-amber-950/80 border-2 border-amber-500 dark:border-amber-400 text-amber-950 dark:text-amber-50 shadow-xs flex items-center justify-between flex-wrap gap-2">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="inline-flex items-center gap-1 bg-amber-600 text-white text-[11px] font-black px-2.5 py-0.5 rounded-md uppercase tracking-wider shadow-xs">
+                          🟧 Pari Orange (0-1)
+                        </span>
+                        <span className="font-extrabold text-xs">
+                          <strong className="text-amber-950 dark:text-amber-200">0 pli = 8 pts</strong> &nbsp;|&nbsp; <strong className="text-amber-950 dark:text-amber-200">1 pli = 3 pts</strong>
+                        </span>
+                      </div>
+                      <span className="text-[10px] uppercase font-black bg-amber-200/90 dark:bg-amber-900 text-amber-950 dark:text-amber-100 px-2 py-0.5 rounded-full border border-amber-400/60">
+                        Max 8 pts
+                      </span>
                     </div>
-                    <div className="p-2 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-900 dark:text-emerald-300">
-                      <strong>🟩 Pari Vert (0-1-2) :</strong> 0 pli = 2 pts | 1 pli = 8 pts | 2 plis = 5 pts
+
+                    {/* 2. VERT */}
+                    <div className="p-2.5 rounded-xl bg-emerald-100/90 dark:bg-emerald-950/80 border-2 border-emerald-500 dark:border-emerald-400 text-emerald-950 dark:text-emerald-50 shadow-xs flex items-center justify-between flex-wrap gap-2">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="inline-flex items-center gap-1 bg-emerald-600 text-white text-[11px] font-black px-2.5 py-0.5 rounded-md uppercase tracking-wider shadow-xs">
+                          🟩 Pari Vert (0-1-2)
+                        </span>
+                        <span className="font-extrabold text-xs">
+                          <strong className="text-emerald-950 dark:text-emerald-200">0 pli = 2 pts</strong> &nbsp;|&nbsp; <strong className="text-emerald-950 dark:text-emerald-200">1 pli = 8 pts</strong> &nbsp;|&nbsp; <strong className="text-emerald-950 dark:text-emerald-200">2 plis = 5 pts</strong>
+                        </span>
+                      </div>
+                      <span className="text-[10px] uppercase font-black bg-emerald-200/90 dark:bg-emerald-900 text-emerald-950 dark:text-emerald-100 px-2 py-0.5 rounded-full border border-emerald-400/60">
+                        Pic à 1 pli
+                      </span>
                     </div>
-                    <div className="p-2 rounded-lg bg-blue-500/10 border border-blue-500/20 text-blue-900 dark:text-blue-300">
-                      <strong>🟦 Pari Bleu (2-3-4) :</strong> 2 plis = 3 pts | 3 plis = 9 pts | 4 plis = 4 pts
+
+                    {/* 3. BLEU */}
+                    <div className="p-2.5 rounded-xl bg-blue-100/90 dark:bg-blue-950/80 border-2 border-blue-500 dark:border-blue-400 text-blue-950 dark:text-blue-50 shadow-xs flex items-center justify-between flex-wrap gap-2">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="inline-flex items-center gap-1 bg-blue-600 text-white text-[11px] font-black px-2.5 py-0.5 rounded-md uppercase tracking-wider shadow-xs">
+                          🟦 Pari Bleu (2-3-4)
+                        </span>
+                        <span className="font-extrabold text-xs">
+                          <strong className="text-blue-950 dark:text-blue-200">2 plis = 3 pts</strong> &nbsp;|&nbsp; <strong className="text-blue-950 dark:text-blue-200">3 plis = 9 pts</strong> &nbsp;|&nbsp; <strong className="text-blue-950 dark:text-blue-200">4 plis = 4 pts</strong>
+                        </span>
+                      </div>
+                      <span className="text-[10px] uppercase font-black bg-blue-200/90 dark:bg-blue-900 text-blue-950 dark:text-blue-100 px-2 py-0.5 rounded-full border border-blue-400/60">
+                        Pic à 3 plis
+                      </span>
                     </div>
-                    <div className="p-2 rounded-lg bg-red-500/10 border border-red-500/20 text-red-900 dark:text-red-300">
-                      <strong>🟥 Pari Rouge (1-2-3) :</strong> 1 pli = 4 pts | 2 plis = 8 pts | 3 plis = 4 pts
+
+                    {/* 4. ROUGE */}
+                    <div className="p-2.5 rounded-xl bg-rose-100/90 dark:bg-rose-950/80 border-2 border-rose-500 dark:border-rose-400 text-rose-950 dark:text-rose-50 shadow-xs flex items-center justify-between flex-wrap gap-2">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="inline-flex items-center gap-1 bg-rose-600 text-white text-[11px] font-black px-2.5 py-0.5 rounded-md uppercase tracking-wider shadow-xs">
+                          🟥 Pari Rouge (1-2-3)
+                        </span>
+                        <span className="font-extrabold text-xs">
+                          <strong className="text-rose-950 dark:text-rose-200">1 pli = 4 pts</strong> &nbsp;|&nbsp; <strong className="text-rose-950 dark:text-rose-200">2 plis = 8 pts</strong> &nbsp;|&nbsp; <strong className="text-rose-950 dark:text-rose-200">3 plis = 4 pts</strong>
+                        </span>
+                      </div>
+                      <span className="text-[10px] uppercase font-black bg-rose-200/90 dark:bg-rose-900 text-rose-950 dark:text-rose-100 px-2 py-0.5 rounded-full border border-rose-400/60">
+                        Pic à 2 plis
+                      </span>
                     </div>
-                    <div className="p-2.5 rounded-lg bg-purple-100 dark:bg-purple-950/80 border-2 border-purple-500 dark:border-purple-400 text-purple-950 dark:text-purple-50 col-span-1 sm:col-span-2 shadow-xs flex items-center justify-between flex-wrap gap-2">
+
+                    {/* 5. VIOLET */}
+                    <div className="p-2.5 rounded-xl bg-purple-100/90 dark:bg-purple-950/80 border-2 border-purple-500 dark:border-purple-400 text-purple-950 dark:text-purple-50 shadow-xs flex items-center justify-between flex-wrap gap-2">
                       <div className="flex items-center gap-2 flex-wrap">
                         <span className="inline-flex items-center gap-1 bg-purple-700 text-white text-[11px] font-black px-2.5 py-0.5 rounded-md uppercase tracking-wider shadow-xs">
                           🟪 Pari Violet (3-4+)
@@ -194,7 +243,7 @@ export default function NoticeModal({ isOpen, onClose }: NoticeModalProps) {
                           <strong className="text-purple-950 dark:text-purple-200">3 plis = 5 pts</strong> &nbsp;|&nbsp; <strong className="text-purple-950 dark:text-purple-200">4 plis ou plus = 10 pts</strong>
                         </span>
                       </div>
-                      <span className="text-[10px] uppercase font-black bg-purple-200 dark:bg-purple-900 text-purple-900 dark:text-purple-100 px-2 py-0.5 rounded-full border border-purple-400/50">
+                      <span className="text-[10px] uppercase font-black bg-purple-200/90 dark:bg-purple-900 text-purple-950 dark:text-purple-100 px-2 py-0.5 rounded-full border border-purple-400/60">
                         Objectif Haut
                       </span>
                     </div>
