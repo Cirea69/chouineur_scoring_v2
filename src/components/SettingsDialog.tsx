@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { X, Sliders, Smartphone, Users, HelpCircle, RefreshCw, Sparkles, Check, CheckCircle } from "lucide-react";
+import { X, Sliders, Smartphone, Users, HelpCircle, RefreshCw, Sparkles, Check, CheckCircle, BookOpen } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 
 interface SettingsDialogProps {
@@ -11,6 +11,7 @@ interface SettingsDialogProps {
   onUpdateMultiplayerMode: (mode: "local" | "simulated") => void;
   onResetAll: () => void;
   onSimulateLobbyPlayers: () => void;
+  onOpenNotice?: () => void;
 }
 
 export default function SettingsDialog({
@@ -22,6 +23,7 @@ export default function SettingsDialog({
   onUpdateMultiplayerMode,
   onResetAll,
   onSimulateLobbyPlayers,
+  onOpenNotice,
 }: SettingsDialogProps) {
   const [lobbyCode, setLobbyCode] = useState(() => "CHOUINE-" + Math.floor(100 + Math.random() * 900));
   const [copiedLobby, setCopiedLobby] = useState(false);
@@ -120,6 +122,25 @@ export default function SettingsDialog({
                     </p>
                   </div>
                 </div>
+
+                {/* Tester Notice Button */}
+                {onOpenNotice && (
+                  <div className="pt-2">
+                    <button
+                      onClick={() => {
+                        onClose();
+                        onOpenNotice();
+                      }}
+                      className="w-full py-3 bg-primary text-on-primary hover:opacity-95 font-label-lg rounded-lg border-b-4 border-black transition-all active:scale-95 flex items-center justify-center gap-2 cursor-pointer font-bold shadow-md"
+                    >
+                      <BookOpen className="w-5 h-5 text-amber-300" />
+                      Notice & Guide du Testeur
+                    </button>
+                    <p className="text-[10px] text-on-surface-variant/80 text-center italic mt-1.5">
+                      Règles des paris, calcul des chouinages, synchro PocketBase et checklist de test.
+                    </p>
+                  </div>
+                )}
 
                 {/* Reset all button */}
                 <div className="pt-4 border-t border-outline-variant/60">

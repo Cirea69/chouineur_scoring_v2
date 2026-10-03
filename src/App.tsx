@@ -9,6 +9,7 @@ import ScoresView from "./components/ScoresView";
 import SettingsDialog from "./components/SettingsDialog";
 import PwaInstallDialog from "./components/PwaInstallDialog";
 import AccountModal from "./components/AccountModal";
+import NoticeModal from "./components/NoticeModal";
 import { pb, client } from "./lib/pocketbase";
 
 // Les fameux avatars originaux des Chouineurs maquettés !
@@ -232,6 +233,7 @@ export default function App() {
 
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [accountOpen, setAccountOpen] = useState(false);
+  const [noticeOpen, setNoticeOpen] = useState(false);
   const [currentUser, setCurrentUser] = useState<any>(() => pb.getCurrentUser());
   const [isSyncing, setIsSyncing] = useState(false);
   const [lastSyncTime, setLastSyncTime] = useState<string | null>(() => {
@@ -927,6 +929,7 @@ export default function App() {
         toggleTheme={toggleTheme}
         openSettings={() => setSettingsOpen(true)}
         openAccount={() => setAccountOpen(true)}
+        openNotice={() => setNoticeOpen(true)}
         currentUser={currentUser}
         multiplayerMode={multiplayerMode}
         onUpdateMultiplayerMode={handleUpdateMultiplayerModeWithSideEffects}
@@ -1014,6 +1017,7 @@ export default function App() {
         onUpdateMultiplayerMode={handleUpdateMultiplayerModeWithSideEffects}
         onResetAll={handleResetAll}
         onSimulateLobbyPlayers={handleSimulateLobbyPlayers}
+        onOpenNotice={() => setNoticeOpen(true)}
       />
 
       <PwaInstallDialog
@@ -1035,6 +1039,11 @@ export default function App() {
           lastSyncTime: lastSyncTime
         }}
         isSyncing={isSyncing}
+      />
+
+      <NoticeModal
+        isOpen={noticeOpen}
+        onClose={() => setNoticeOpen(false)}
       />
     </div>
   );

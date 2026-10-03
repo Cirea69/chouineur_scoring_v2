@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { Sparkles, Settings, Users, Laptop, Download, Server, Database, Check, Loader2, AlertCircle, Smartphone, Wifi, User, ShieldCheck } from "lucide-react";
+import { Sparkles, Settings, Users, Laptop, Download, Server, Database, Check, Loader2, AlertCircle, Smartphone, Wifi, User, ShieldCheck, BookOpen } from "lucide-react";
 import ThemeToggle from "./ThemeToggle";
 import { Theme } from "../types";
 import { getPocketBaseUrl, setPocketBaseUrl } from "../lib/pocketbase";
@@ -10,6 +10,7 @@ interface TopAppBarProps {
   toggleTheme: () => void;
   openSettings: () => void;
   openAccount: () => void;
+  openNotice?: () => void;
   currentUser: any;
   multiplayerMode: "local" | "simulated" | "multiplayer";
   onUpdateMultiplayerMode?: (mode: "local" | "simulated" | "multiplayer") => void;
@@ -25,6 +26,7 @@ export default function TopAppBar({
   toggleTheme,
   openSettings,
   openAccount,
+  openNotice,
   currentUser,
   multiplayerMode,
   onUpdateMultiplayerMode,
@@ -415,6 +417,16 @@ export default function TopAppBar({
               </div>
             )}
           </div>
+
+          {openNotice && (
+            <button
+              onClick={openNotice}
+              className="p-2 text-primary hover:bg-black/5 dark:hover:bg-white/10 dark:text-primary-fixed-dim transition-colors rounded-full active:scale-95 duration-150 flex items-center justify-center cursor-pointer"
+              title="Notice d'utilisation & Guide Testeurs"
+            >
+              <BookOpen className="w-6 h-6" />
+            </button>
+          )}
 
           <button
             onClick={openSettings}
