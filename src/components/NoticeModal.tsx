@@ -185,8 +185,18 @@ export default function NoticeModal({ isOpen, onClose }: NoticeModalProps) {
                     <div className="p-2 rounded-lg bg-red-500/10 border border-red-500/20 text-red-900 dark:text-red-300">
                       <strong>🟥 Pari Rouge (1-2-3) :</strong> 1 pli = 4 pts | 2 plis = 8 pts | 3 plis = 4 pts
                     </div>
-                    <div className="p-2 rounded-lg bg-purple-500/10 border border-purple-500/20 text-purple-900 dark:text-purple-300 col-span-1 sm:col-span-2">
-                      <strong>🟪 Pari Violet (3-4+) :</strong> 3 plis = 5 pts | 4 plis ou plus = 10 pts
+                    <div className="p-2.5 rounded-lg bg-purple-100 dark:bg-purple-950/80 border-2 border-purple-500 dark:border-purple-400 text-purple-950 dark:text-purple-50 col-span-1 sm:col-span-2 shadow-xs flex items-center justify-between flex-wrap gap-2">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="inline-flex items-center gap-1 bg-purple-700 text-white text-[11px] font-black px-2.5 py-0.5 rounded-md uppercase tracking-wider shadow-xs">
+                          🟪 Pari Violet (3-4+)
+                        </span>
+                        <span className="font-extrabold text-xs">
+                          <strong className="text-purple-950 dark:text-purple-200">3 plis = 5 pts</strong> &nbsp;|&nbsp; <strong className="text-purple-950 dark:text-purple-200">4 plis ou plus = 10 pts</strong>
+                        </span>
+                      </div>
+                      <span className="text-[10px] uppercase font-black bg-purple-200 dark:bg-purple-900 text-purple-900 dark:text-purple-100 px-2 py-0.5 rounded-full border border-purple-400/50">
+                        Objectif Haut
+                      </span>
                     </div>
                   </div>
                 </div>

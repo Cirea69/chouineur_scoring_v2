@@ -19,7 +19,7 @@ export const PLAYER_COLORS: PlayerColorPreset[] = [
   { id: "blue", name: "Bleu", bgClass: "bg-blue-600", borderClass: "border-blue-600", textClass: "text-blue-800 dark:text-blue-300 font-extrabold", badgeClass: "bg-blue-600/15 text-blue-950 dark:text-blue-200 border border-blue-500/30 font-bold", ringClass: "focus:ring-blue-500", accentBg: "bg-blue-500/10 dark:bg-blue-500/15", hex: "#2563eb" },
   { id: "emerald", name: "Vert", bgClass: "bg-emerald-600", borderClass: "border-emerald-600", textClass: "text-emerald-800 dark:text-emerald-300 font-extrabold", badgeClass: "bg-emerald-600/15 text-emerald-950 dark:text-emerald-200 border border-emerald-500/30 font-bold", ringClass: "focus:ring-emerald-500", accentBg: "bg-emerald-500/10 dark:bg-emerald-500/15", hex: "#16a34a" },
   { id: "rose", name: "Rose", bgClass: "bg-rose-600", borderClass: "border-rose-600", textClass: "text-rose-800 dark:text-rose-300 font-extrabold", badgeClass: "bg-rose-600/15 text-rose-950 dark:text-rose-200 border border-rose-500/30 font-bold", ringClass: "focus:ring-rose-500", accentBg: "bg-rose-500/10 dark:bg-rose-500/15", hex: "#e11d48" },
-  { id: "purple", name: "Violet", bgClass: "bg-purple-600", borderClass: "border-purple-600", textClass: "text-purple-800 dark:text-purple-300 font-extrabold", badgeClass: "bg-purple-600/15 text-purple-950 dark:text-purple-200 border border-purple-500/30 font-bold", ringClass: "focus:ring-purple-500", accentBg: "bg-purple-500/10 dark:bg-purple-500/15", hex: "#9333ea" },
+  { id: "purple", name: "Violet", bgClass: "bg-purple-600", borderClass: "border-purple-500", textClass: "text-purple-950 dark:text-purple-100 font-black", badgeClass: "bg-purple-100 dark:bg-purple-950/80 text-purple-950 dark:text-purple-100 border-2 border-purple-500/60 font-black shadow-xs", ringClass: "focus:ring-purple-500", accentBg: "bg-purple-500/20 dark:bg-purple-500/30", hex: "#9333ea" },
 ];
 
 export function getPlayerColorPreset(colorId?: string, fallbackIndex: number = 0): PlayerColorPreset {
@@ -107,11 +107,11 @@ export const PARI_CARDS: PariCard[] = [
     id: "violet",
     name: "3-4+",
     colorName: "Pari 3-4+",
-    color: "from-purple-500 via-indigo-500 to-indigo-600",
-    textColor: "text-purple-700 dark:text-purple-300",
-    bgColor: "bg-purple-500/10 dark:bg-purple-500/20",
-    borderColor: "border-purple-500/30",
-    accentColor: "bg-purple-600 text-white",
+    color: "from-purple-600 via-fuchsia-600 to-indigo-700",
+    textColor: "text-purple-950 dark:text-purple-100",
+    bgColor: "bg-purple-100/90 dark:bg-purple-950/80",
+    borderColor: "border-purple-500 dark:border-purple-400",
+    accentColor: "bg-purple-700 text-white font-black",
     bets: [
       { plis: 3, label: "3 plis", points: 5 },
       { plis: 4, label: "4+ plis", points: 10 }

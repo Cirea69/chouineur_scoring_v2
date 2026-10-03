@@ -35,35 +35,40 @@ export default function PariCardVisual({
   const scaleEffect = isSelected ? "scale-[1.04] shadow-xl border-dashed border-primary" : "hover:scale-[1.02] shadow hover:shadow-md border-transparent";
   const disabledEffect = isDiscarded ? "opacity-35 grayscale cursor-not-allowed" : "cursor-pointer";
 
-  // Colors for specific arches and elements if no playerIndex is defined
+  // Colors for specific card draped header curtains (card identity always takes precedence)
   const drapeStyles: { [key: string]: string } = {
-    orange: "bg-orange-500 text-orange-600",
-    verte: "bg-emerald-600 text-emerald-700",
-    bleu: "bg-blue-600 text-blue-700",
-    rouge: "bg-red-600 text-red-700",
-    violet: "bg-purple-600 text-purple-700",
+    orange: "bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-xs",
+    verte: "bg-gradient-to-r from-emerald-500 to-green-600 text-white shadow-xs",
+    bleu: "bg-gradient-to-r from-blue-500 to-indigo-600 text-white shadow-xs",
+    rouge: "bg-gradient-to-r from-rose-500 to-red-600 text-white shadow-xs",
+    violet: "bg-gradient-to-r from-purple-700 via-fuchsia-700 to-indigo-800 text-white shadow-sm ring-1 ring-purple-300/40",
   };
 
-  const chosenTheme = playerIndex !== undefined ? PLAYER_CARD_THEMES[playerIndex % PLAYER_CARD_THEMES.length] : null;
-  const drapeClass = chosenTheme ? chosenTheme.drape : (drapeStyles[card.id] || "bg-stone-500 text-stone-600");
+  const drapeClass = drapeStyles[card.id] || "bg-stone-600 text-white";
 
   // Render internal miniature stained glass arched window architecture
   const renderArches = () => {
     switch (card.id) {
       case "violet": // 3 plis -> 5 pts | 4+ plis -> 10 pts
         return (
-          <div className="absolute inset-0 flex flex-col justify-end p-2 pb-3">
+          <div className="absolute inset-0 flex flex-col justify-end p-2 pb-3 bg-purple-50/50 dark:bg-purple-950/25">
             {/* Top Windows with stained glass score badges */}
             <div className="absolute top-[35%] left-1/2 transform -translate-x-1/2 -translate-y-1/2 flex items-center justify-center gap-1.5 z-10">
               {/* Badge 5 (plis 3) */}
               <div className="flex flex-col items-center">
-                <div className="w-5 h-5 rounded-full border border-stone-800 dark:border-stone-400 bg-amber-100 flex items-center justify-center text-[10px] font-black text-purple-800 shadow" style={{ backgroundImage: "linear-gradient(45deg, #fef08a, #c084fc)" }}>
+                <div
+                  className="w-5 h-5 rounded-full border-1.5 border-purple-900 dark:border-purple-200 bg-amber-200 flex items-center justify-center text-[10px] font-black text-purple-950 shadow-md"
+                  style={{ backgroundImage: "linear-gradient(135deg, #fde047, #d8b4fe)" }}
+                >
                   5
                 </div>
               </div>
               {/* Badge 10 (plis 4+) */}
               <div className="flex flex-col items-center">
-                <div className="w-6 h-6 rounded-full border-1.5 border-stone-800 dark:border-stone-400 bg-amber-200 flex items-center justify-center text-xs font-black text-purple-900 shadow-md" style={{ backgroundImage: "linear-gradient(135deg, #ec4899, #f59e0b, #a855f7)" }}>
+                <div
+                  className="w-6 h-6 rounded-full border-2 border-white dark:border-purple-200 bg-purple-600 flex items-center justify-center text-xs font-black text-white shadow-lg ring-2 ring-purple-600/40"
+                  style={{ backgroundImage: "linear-gradient(135deg, #ec4899, #9333ea, #4f46e5)" }}
+                >
                   10
                 </div>
               </div>
@@ -72,14 +77,14 @@ export default function PariCardVisual({
             {/* Twin Arches */}
             <div className="grid grid-cols-2 gap-2 h-[65%] items-end relative">
               {/* Left Arch (3) */}
-              <div className="h-full border-t-2 border-x-2 border-purple-900/25 dark:border-purple-300/20 rounded-t-full flex flex-col justify-end items-center pb-2 bg-stone-100/50 dark:bg-stone-900/40 relative">
-                <span className="text-2xl font-black text-purple-600 dark:text-purple-400 leading-none">3</span>
-                <span className="text-[7px] font-bold text-stone-500 uppercase tracking-tighter leading-none">plis</span>
+              <div className="h-full border-t-2 border-x-2 border-purple-600/50 dark:border-purple-400/50 rounded-t-full flex flex-col justify-end items-center pb-2 bg-purple-100/80 dark:bg-purple-950/70 relative shadow-inner">
+                <span className="text-2xl font-black text-purple-900 dark:text-purple-100 leading-none drop-shadow-xs">3</span>
+                <span className="text-[7.5px] font-black text-purple-800 dark:text-purple-300 uppercase tracking-tighter leading-none mt-0.5">plis</span>
               </div>
               {/* Right Arch (4+) */}
-              <div className="h-full border-t-2 border-x-2 border-purple-900/25 dark:border-purple-300/20 rounded-t-full flex flex-col justify-end items-center pb-2 bg-stone-100/50 dark:bg-stone-900/40 relative">
-                <span className="text-2xl font-black text-purple-700 dark:text-purple-300 leading-none">4+</span>
-                <span className="text-[7px] font-bold text-stone-500 uppercase tracking-tighter leading-none">plis</span>
+              <div className="h-full border-t-2 border-x-2 border-purple-600/60 dark:border-purple-400/60 rounded-t-full flex flex-col justify-end items-center pb-2 bg-purple-200/90 dark:bg-purple-900/80 relative shadow-inner scale-[1.03]">
+                <span className="text-2xl font-black text-purple-950 dark:text-white leading-none drop-shadow-xs">4+</span>
+                <span className="text-[7.5px] font-black text-purple-900 dark:text-purple-200 uppercase tracking-tighter leading-none mt-0.5">plis</span>
               </div>
             </div>
           </div>
@@ -219,10 +224,16 @@ export default function PariCardVisual({
   return (
     <div
       onClick={isDiscarded ? undefined : onClick}
-      className={`relative select-none rounded-xl border-2 overflow-hidden transition-all duration-300 bg-stone-50 dark:bg-stone-950 ${widthClass} ${scaleEffect} ${disabledEffect} flex flex-col p-1.5`}
+      className={`relative select-none rounded-xl border-2 overflow-hidden transition-all duration-300 bg-stone-50 dark:bg-stone-950 ${widthClass} ${scaleEffect} ${disabledEffect} flex flex-col p-1.5 ${
+        card.id === "violet" ? "border-purple-300 dark:border-purple-700/80" : ""
+      }`}
       style={{
         boxShadow: isSelected
-          ? "0 10px 25px -5px rgba(0, 0, 0, 0.3), 0 0 0 3px var(--color-primary)"
+          ? card.id === "violet"
+            ? "0 10px 25px -5px rgba(147, 51, 234, 0.45), 0 0 0 3px #9333ea"
+            : "0 10px 25px -5px rgba(0, 0, 0, 0.3), 0 0 0 3px var(--color-primary)"
+          : card.id === "violet"
+          ? "0 4px 10px -3px rgba(147, 51, 234, 0.25)"
           : "0 4px 10px -3px rgba(0, 0, 0, 0.15)",
       }}
     >

@@ -406,7 +406,11 @@ export default function PartieView({
                         {player.name}
                         <span className={`w-2.5 h-2.5 rounded-full inline-block ${colorPreset.bgClass}`} />
                         {activePariCard && (
-                          <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 text-[9px] font-bold rounded-full text-white bg-gradient-to-br ${activePariCard.color} border border-black/10 shadow-xs uppercase tracking-wider`}>
+                          <span
+                            className={`inline-flex items-center gap-1 px-2.5 py-0.5 text-[9px] font-black rounded-full text-white bg-gradient-to-br ${activePariCard.color} ${
+                              activePariCard.id === "violet" ? "ring-2 ring-purple-400 shadow-md" : "border border-black/10 shadow-xs"
+                            } uppercase tracking-wider`}
+                          >
                             Actuel : {activePariCard.colorName}
                           </span>
                         )}
@@ -446,7 +450,9 @@ export default function PartieView({
                                     ? "bg-primary/40 text-on-primary select-none opacity-60 font-black cursor-default"
                                     : "bg-surface-container-high/30 text-on-surface/40 select-none cursor-default"
                                   : isSelected
-                                  ? "bg-primary text-on-primary shadow-sm font-black border-2 border-primary"
+                                  ? card.id === "violet"
+                                    ? "bg-purple-700 text-white shadow-sm font-black border-2 border-purple-500 ring-2 ring-purple-400/50"
+                                    : "bg-primary text-on-primary shadow-sm font-black border-2 border-primary"
                                   : "bg-surface-container-high hover:bg-surface-container-highest text-on-surface border border-outline-variant"
                               }`}
                             >
@@ -460,12 +466,34 @@ export default function PartieView({
 
                   {/* Contract detail banner */}
                   {activePariCard && (
-                    <div className="mt-2 flex items-start gap-1.5 text-xs bg-surface-container-low dark:bg-stone-900/40 p-2.5 rounded-xl border border-outline-variant/60">
-                      <span className="font-extrabold uppercase text-[10px] text-primary whitespace-nowrap mt-0.5">Contrat :</span>
-                      <span className="text-on-surface-variant font-medium">
-                        {activePariCard.colorName} — Gagnant si exactement{" "}
+                    <div
+                      className={`mt-2 flex items-start gap-2 text-xs p-2.5 rounded-xl border ${
+                        activePariCard.id === "violet"
+                          ? "bg-purple-100/90 dark:bg-purple-950/75 border-2 border-purple-400 dark:border-purple-500 text-purple-950 dark:text-purple-100 shadow-xs"
+                          : "bg-surface-container-low dark:bg-stone-900/40 border border-outline-variant/60"
+                      }`}
+                    >
+                      <span
+                        className={`font-black uppercase text-[10px] whitespace-nowrap mt-0.5 ${
+                          activePariCard.id === "violet" ? "text-purple-800 dark:text-purple-200" : "text-primary"
+                        }`}
+                      >
+                        Contrat :
+                      </span>
+                      <span className="text-on-surface font-medium">
+                        <strong className={activePariCard.id === "violet" ? "text-purple-950 dark:text-purple-100 font-black" : "text-primary font-black"}>
+                          {activePariCard.colorName}
+                        </strong>
+                        {" "}— Gagnant si exactement{" "}
                         {activePariCard.bets.map((b) => (
-                          <strong key={b.label} className="text-primary font-black ml-1 whitespace-nowrap">
+                          <strong
+                            key={b.label}
+                            className={`font-black ml-1 whitespace-nowrap px-1.5 py-0.5 rounded text-[11px] ${
+                              activePariCard.id === "violet"
+                                ? "bg-purple-200 dark:bg-purple-900 text-purple-950 dark:text-purple-100 border border-purple-400/70"
+                                : "text-primary font-black"
+                            }`}
+                          >
                             {b.label} ({b.points} pts)
                           </strong>
                         )).reduce((prev, curr) => [prev, " ou ", curr])}.
@@ -546,7 +574,11 @@ export default function PartieView({
                           </h3>
 
                           {activePariCard && (
-                            <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 text-[10px] font-bold rounded-full text-white bg-gradient-to-br ${activePariCard.color} border border-black/10 shadow-xs uppercase tracking-wider`}>
+                            <span
+                              className={`inline-flex items-center gap-1 px-2.5 py-0.5 text-[10px] font-black rounded-full text-white bg-gradient-to-br ${activePariCard.color} ${
+                                activePariCard.id === "violet" ? "ring-2 ring-purple-400 shadow-md" : "border border-black/10 shadow-xs"
+                              } uppercase tracking-wider`}
+                            >
                               🎯 {activePariCard.colorName}
                             </span>
                           )}
@@ -824,7 +856,11 @@ export default function PartieView({
                           </h3>
 
                           {activePariCard && (
-                            <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 text-[10px] font-bold rounded-full text-white bg-gradient-to-br ${activePariCard.color} border border-black/10 shadow-xs uppercase tracking-wider`}>
+                            <span
+                              className={`inline-flex items-center gap-1 px-2.5 py-0.5 text-[10px] font-black rounded-full text-white bg-gradient-to-br ${activePariCard.color} ${
+                                activePariCard.id === "violet" ? "ring-2 ring-purple-400 shadow-md" : "border border-black/10 shadow-xs"
+                              } uppercase tracking-wider`}
+                            >
                               🎯 {activePariCard.colorName}
                             </span>
                           )}

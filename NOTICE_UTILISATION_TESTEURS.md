@@ -90,7 +90,7 @@ Chaque joueur choisit secrètement sa carte pari pour la manche :
 - 🟩 **Carte Verte (0-1-2)** : 0 pli = 2 pts | 1 pli = 8 pts | 2 plis = 5 pts
 - 🟦 **Carte Bleue (2-3-4)** : 2 plis = 3 pts | 3 plis = 9 pts | 4 plis = 4 pts
 - 🟥 **Carte Rouge (1-2-3)** : 1 pli = 4 pts | 2 plis = 8 pts | 3 plis = 4 pts
-- 🟪 **Carte Violette (3-4+)** : 3 plis = 5 pts | 4 plis ou plus = 10 pts
+- 🟪 **Carte Violette (3-4+) [Gros gains]** : 3 plis = 5 pts | 4 plis ou plus = 10 pts *(arches violettes contrastées et drape pourpre royal)*
 > ⚠️ *Règle d'or : Une carte pari réussie est validée pour la partie et ne peut plus être réutilisée lors des manches suivantes !*
 
 #### 2️⃣ Étape 2 : Les Chouines
